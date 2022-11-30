@@ -1,0 +1,53 @@
+(ql:quickload :str)
+(defconstant +z-char+ (char-code #\z))
+
+(defun increment-letter (password &optional (index (1- (length password))))
+  (when (< index 0) (return-from increment-letter (str:concat "a" password)))
+  (let* ((to-increment (aref password index))
+         (incremented-code (1+ (char-code to-increment)))
+         (incremented-char (code-char incremented-code)))
+    (if (<= incremented-code +z-char+)
+        (str:concat (str:substring 0 index password) (string incremented-char))
+        (str:concat (increment-letter (str:substring 0 index password) (1- index)) "a"))))
+
+(defun rule-1 (input)
+  (loop for i upto (- (length input) 4)
+        for c1 = (char-code (char input i))
+        for c2 = (char-code (char input (+ i 1)))
+        for c3 = (char-code (char input (+ i 2)))
+        when (and (= c2 (1+ c1)) (= c3 (1+ c2)))
+          do (return t)
+        finally (return nil)))
+
+(defun rule-2 (input)
+  (not (or
+        (find #\i input)
+        (find #\o input)
+        (find #\l input))))
+
+(defun rule-3 (input)
+  (let ((match-idx nil))
+    (loop for i upto (- (length input) 2)
+          for c1 = (char input i)
+          for c2 = (char input (+ i 1))
+          when (and (char= c1 c2) (or (not match-idx) (> i match-idx)))
+            do (if match-idx (return t) (setf match-idx (1+ i)))
+          finally (return nil))))
+
+(defun is-valid (input)
+  (and
+   (rule-1 input)
+   (rule-2 input)
+   (rule-3 input)))
+
+(defun next-valid (input)
+  (loop when (equal input "ghjaabcc")
+          do (format t "~A: ~A" input (is-valid input))
+        when (is-valid input)
+          do (return input)
+        do (setf input (increment-letter input))))
+
+(next-valid "abcdefgh")
+(print (next-valid "ghijklmn"))
+(print (next-valid "hxbxwxba"))
+(print (next-valid (increment-letter "hxbxxyzz")))
