@@ -11,8 +11,7 @@ object Day3 {
 
     fun scenarioOne(textFile: String) =
         File(textFile).readLines()
-            .map { it.subSequence(0, it.length / 2) to it.subSequence(it.length / 2, it.length) }
-            .map { parts -> parts.first.first { first -> parts.second.any { second -> first == second } } }
+            .flatMap { it.subSequence(0, it.length / 2).toSet().intersect(it.subSequence(it.length / 2, it.length).toSet()) }
             .sumOf { priority(it) }
 
     fun scenarioTwo(textFile: String) =
