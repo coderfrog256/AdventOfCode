@@ -10,7 +10,7 @@ object Day3 {
             1 + (item.code - 'a'.code)
 
     fun scenarioOne(textFile: String) =
-        File(textFile).readLines()
+        File(textFile).readLines().asSequence()
             .flatMap { it.subSequence(0, it.length / 2).toSet().intersect(it.subSequence(it.length / 2, it.length).toSet()) }
             .sumOf { priority(it) }
 
@@ -19,7 +19,7 @@ object Day3 {
             .groupBy { it.index / 3 }
             .values
             .sumOf { groupOfThree ->
-                groupOfThree
+                groupOfThree.asSequence()
                     .flatMapIndexed { owner, items -> items.value.map { item -> item to owner } }
                     .groupBy({ it.first }, { it.second })
                     .filter { itemOwners -> itemOwners.value.distinct().size == 3 }
