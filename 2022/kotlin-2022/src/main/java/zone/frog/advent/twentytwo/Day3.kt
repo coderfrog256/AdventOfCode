@@ -3,11 +3,11 @@ package zone.frog.advent.twentytwo
 import java.io.File
 
 object Day3 {
-    private fun priority(letter: Char): Int {
-        return if (letter.isUpperCase())
-            27 + (letter.code - 'A'.code)
+    private fun priority(item: Char): Int {
+        return if (item.isUpperCase())
+            27 + (item.code - 'A'.code)
         else
-            1 + (letter.code - 'a'.code)
+            1 + (item.code - 'a'.code)
     }
 
     fun scenarioOne(textFile: String) =
@@ -21,15 +21,14 @@ object Day3 {
         return File(textFile).readLines()
             .groupBy { (i++) / 3 }
             .values
-            .sumOf { group ->
-                group.asSequence()
-                    .mapIndexed { index, chars -> chars.map { it to mutableSetOf(index) }.toMap() }
-                    .fold(mutableMapOf<Char, MutableSet<Int>>()) { acc, map ->
-                        map.forEach { (k, v) ->
-                            acc.computeIfAbsent(k) { mutableSetOf() }.addAll(v)
-                        }.let { acc }
+            .sumOf { groupOfThree ->
+                groupOfThree
+                    .mapIndexed { owner, items -> items.map { item -> item to owner } }
+                    .fold(mutableMapOf<Char, MutableSet<Int>>()) { itemOwners, itemAndOwner ->
+                        itemAndOwner.forEach { (item, owner) -> itemOwners.computeIfAbsent(item) { mutableSetOf() }.add(owner) }
+                        itemOwners
                     }
-                    .filter { it.value.size == 3 }
+                    .filter { itemOwners -> itemOwners.value.size == 3 }
                     .keys
                     .sumOf { priority(it) }
             }
