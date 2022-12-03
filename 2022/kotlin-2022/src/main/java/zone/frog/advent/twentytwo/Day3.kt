@@ -3,12 +3,11 @@ package zone.frog.advent.twentytwo
 import java.io.File
 
 object Day3 {
-    private fun priority(item: Char): Int {
-        return if (item.isUpperCase())
+    private fun priority(item: Char) =
+        if (item.isUpperCase())
             27 + (item.code - 'A'.code)
         else
             1 + (item.code - 'a'.code)
-    }
 
     fun scenarioOne(textFile: String) =
         File(textFile).readLines()
@@ -16,21 +15,16 @@ object Day3 {
             .map { parts -> parts.first.first { first -> parts.second.any { second -> first == second } } }
             .sumOf { priority(it) }
 
-    fun scenarioTwo(textFile: String): Int {
-        var i = 0
-        return File(textFile).readLines()
-            .groupBy { (i++) / 3 }
+    fun scenarioTwo(textFile: String) =
+        File(textFile).readLines().withIndex()
+            .groupBy { it.index / 3 }
             .values
             .sumOf { groupOfThree ->
                 groupOfThree
-                    .mapIndexed { owner, items -> items.map { item -> item to owner } }
-                    .fold(mutableMapOf<Char, MutableSet<Int>>()) { itemOwners, itemAndOwner ->
-                        itemAndOwner.forEach { (item, owner) -> itemOwners.computeIfAbsent(item) { mutableSetOf() }.add(owner) }
-                        itemOwners
-                    }
-                    .filter { itemOwners -> itemOwners.value.size == 3 }
+                    .flatMapIndexed { owner, items -> items.value.map { item -> item to owner } }
+                    .groupBy({ it.first }, { it.second })
+                    .filter { itemOwners -> itemOwners.value.distinct().size == 3 }
                     .keys
                     .sumOf { priority(it) }
             }
-    }
 }
