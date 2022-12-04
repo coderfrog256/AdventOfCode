@@ -1,5 +1,6 @@
 package zone.frog.advent.twentytwo
 
+import zone.frog.advent.twentytwo.Day4.buildElves
 import java.io.File
 
 // For fun, use IntRange as an iterable/pair, instead of just a Pair with two ints.
@@ -12,23 +13,11 @@ object Day4Ranges {
 
     fun scenarioOne(textFile: String) =
         File(textFile).readLines()
-            .map {
-                it.split(",").map { elves ->
-                    elves.split("-").let { range ->
-                        IntRange(range[0].toInt(), range[1].toInt())
-                    }
-                }
-            }
+            .map { buildElves(it) }
             .count { checkCompleteOverlap(it[0], it[1]) }
 
     fun scenarioTwo(textFile: String) =
         File(textFile).readLines()
-            .map { line ->
-                line.split(",").map { elves ->
-                    elves.split("-").let { range ->
-                        IntRange(range[0].toInt(), range[1].toInt())
-                    }
-                }
-            }
+            .map { buildElves(it) }
             .count { checkAnyOverlap(it[0], it[1]) }
 }
