@@ -1,6 +1,6 @@
 defmodule Day5 do
   # Optimistic parse. If we parsed a (\d+), we know it's an int.
-  def parse_int(int) do
+  defp parse_int(int) do
     {parsed, _} = Integer.parse(int)
     parsed
   end
