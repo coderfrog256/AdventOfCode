@@ -44,9 +44,10 @@ object Day5 {
             }
             .let { Crates(it) }
 
-    fun scenarioOne(textFileTop: String, textFileBottom: String): String {
-        val crates = buildCrates(File(textFileTop).readText())
-        File(textFileBottom).readLines()
+    fun scenarioOne(textFile: String): String {
+        val file = File(textFile)
+        val crates = buildCrates(file.readText())
+        file.readLines()
             .map { operationRegex.matcher(it) }
             .filter { it.matches() }
             .forEach { command ->
@@ -61,9 +62,10 @@ object Day5 {
         return crates.topLetters()
     }
 
-    fun scenarioTwo(textFileTop: String, textFileBottom: String): String {
-        val crates = buildCrates(File(textFileTop).readText())
-        File(textFileBottom).readLines()
+    fun scenarioTwo(textFile: String): String {
+        val file = File(textFile)
+        val crates = buildCrates(file.readText())
+        file.readLines()
             .map { operationRegex.matcher(it) }
             .filter { it.matches() }
             .forEach { command ->

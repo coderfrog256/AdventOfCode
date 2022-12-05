@@ -8,21 +8,21 @@ import zone.frog.advent.twentytwo.Day5.scenarioTwo
 class Day5Test {
     @Test
     internal fun testOne() {
-        assertEquals("CMZ", scenarioOne("../input/day5-test-top.txt", "../input/day5-test-bottom.txt"))
+        assertEquals("CMZ", scenarioOne("../input/day5-test.txt"))
     }
 
     @Test
     internal fun testScenarioOne() {
-        assertEquals("ZRLJGSCTR", scenarioOne("../input/day5-top.txt", "../input/day5-bottom.txt"))
+        assertEquals("ZRLJGSCTR", scenarioOne("../input/day5.txt"))
     }
 
     @Test
     internal fun testTwo() {
-        assertEquals("MCD", scenarioTwo("../input/day5-test-top.txt", "../input/day5-test-bottom.txt"))
+        assertEquals("MCD", scenarioTwo("../input/day5-test.txt"))
     }
 
     @Test
     internal fun testScenarioTwo() {
-        assertEquals("PRTTGRFPB", scenarioTwo("../input/day5-top.txt", "../input/day5-bottom.txt"))
+        assertEquals("PRTTGRFPB", scenarioTwo("../input/day5.txt"))
     }
 }
