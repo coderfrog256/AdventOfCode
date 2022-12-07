@@ -10,7 +10,10 @@ object Day7 {
     }
 
     private fun directorySize(dirTree: Map<String, Int>, key: String) =
-        dirTree.filter { key != it.key && it.key.startsWith(key) }.values.sum()
+        dirTree.asSequence()
+            .filter { key != it.key && it.key.startsWith(key) }
+            .map { it.value }
+            .sum()
 
     private fun buildDirectoryTree(textFile: String) =
         File(textFile).readLines()
