@@ -12,7 +12,7 @@ object Day7 {
     private fun directorySize(dirTree: Map<String, Int>, key: String) =
         dirTree.filter { key != it.key && it.key.startsWith(key) }.values.sum()
 
-    fun scenarioOne(textFile: String) =
+    private fun buildDirectoryTree(textFile: String) =
         File(textFile).readLines()
             .fold("" to mapOf("/" to 0)) { acc, line ->
                 val (dir, tree) = acc
@@ -31,29 +31,14 @@ object Day7 {
                 }
             }
             .second
-            .let { directorySizes(it) }
+
+    fun scenarioOne(textFile: String) =
+        directorySizes(buildDirectoryTree(textFile))
             .filter { it <= 100000 }
             .sum()
 
     fun scenarioTwo(textFile: String): Int {
-        val directoryTree = File(textFile).readLines()
-            .fold("" to mapOf("/" to 0)) { acc, line ->
-                val (dir, tree) = acc
-                if (line == "$ cd ..") {
-                    dir.substringBeforeLast("/") to tree
-                } else if (line == "$ cd /") {
-                    //Special case the first line.
-                    acc
-                } else if (line.startsWith("$ cd ")) {
-                    val subdir = "$dir/${line.substringAfterLast(" ")}"
-                    subdir to (tree + (subdir to 0))
-                } else if (line.startsWith("dir") || line == "$ ls") {
-                    acc
-                } else {
-                    dir to tree + ("$dir/${line.substringAfterLast(" ")}" to line.substringBeforeLast(" ").toInt())
-                }
-            }
-            .second
+        val directoryTree = buildDirectoryTree(textFile)
         val totalUsed = directorySize(directoryTree, "")
         val unused = 70000000 - totalUsed
         val toFree = 30000000 - unused
