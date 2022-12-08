@@ -27,11 +27,10 @@ object Day8 {
             return filtered.count() + if (range.count() != filtered.count()) 1 else 0
         }
 
-        val leftCount = lineScore((0 until x).reversed()) { height > grid[it][y] }
-        val upCount = lineScore((0 until y).reversed()) { height > grid[x][it] }
-        val rightCount = lineScore((x + 1..rowCount)) { height > grid[it][y] }
-        val downCount = lineScore((y + 1..columnCount)) { height > grid[x][it] }
-        return (leftCount * upCount * rightCount * downCount)
+        return (lineScore((0 until x).reversed()) { height > grid[it][y] }
+                * lineScore((0 until y).reversed()) { height > grid[x][it] }
+                * lineScore((x + 1..rowCount)) { height > grid[it][y] }
+                * lineScore((y + 1..columnCount)) { height > grid[x][it] })
     }
 
     private fun buildGrid(lines: List<String>): TreeHeightGrid {
