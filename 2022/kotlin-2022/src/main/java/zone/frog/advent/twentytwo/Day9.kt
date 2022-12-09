@@ -44,13 +44,13 @@ object Day9 {
 
     private fun runSteps(lines: List<String>, knots: Int): Int {
         // Build up our nested list of knots.
-        val head = (0 until knots - 1)
+        val initialHead = (0 until knots - 1)
             .fold(Knot()) { knot, _ ->
                 Knot(next = knot)
             }
 
         // Loop through the lines, keeping track of our list and where the last element has visited.
-        return lines.fold(head to setOf(0 to 0)) { visitedHeads, line ->
+        return lines.fold(initialHead to setOf(0 to 0)) { visitedHeads, line ->
             val (command, times) = line.split(" ")
             command.repeat(times.toInt())
                 .fold(visitedHeads) { head, direction ->
