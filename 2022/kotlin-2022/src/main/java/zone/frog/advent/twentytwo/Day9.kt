@@ -39,7 +39,7 @@ object Day9 {
         }
 
         private fun last(): Knot = next?.last() ?: this
-        fun lastPosition(): Pair<Int, Int> = (next?.last() ?: this).let { it.x to it.y }
+        fun lastPosition(): Pair<Int, Int> = last().let { it.x to it.y }
     }
 
     private fun runSteps(lines: List<String>, knots: Int): Int {
