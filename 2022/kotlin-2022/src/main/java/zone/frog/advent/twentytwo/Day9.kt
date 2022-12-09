@@ -43,26 +43,26 @@ object Day9 {
             return copy(x = newX, y = newY, next = newNext)
         }
 
-        fun last(): Knot = next?.last() ?: this
+        private fun last(): Knot = next?.last() ?: this
+        fun lastPosition(): Pair<Int, Int> = (next?.last() ?: this).let { it.x to it.y }
     }
 
     private fun runSteps(lines: List<String>, knots: Int): Int {
-        val visited = mutableSetOf(0 to 0)
-        var head = Knot()
-        repeat(knots - 1) {
-            head = head.copy(next = head)
-        }
-
-        for (line in lines) {
-            val (direction, count) = line.split(" ")
-            repeat(count.toInt()) {
-                head = head.move(direction)
-
-                val last = head.last()
-                visited.add(last.x to last.y)
+        // Build up our nested list of knots.
+        val head = (0 until knots - 1)
+            .fold(Knot()) { knot, _ ->
+                Knot(next = knot)
             }
-        }
-        return visited.size
+
+        // Loop through the lines, keeping track of our list and where the last element has visited.
+        return lines.fold(head to setOf(0 to 0)) { visitedHeads, line ->
+            val (command, times) = line.split(" ")
+            command.repeat(times.toInt())
+                .fold(visitedHeads) { head, direction ->
+                    val newHead = head.first.move(direction.toString())
+                    newHead to head.second + newHead.lastPosition()
+                }
+        }.second.size
     }
 
     fun scenarioOne(textFile: String) =
