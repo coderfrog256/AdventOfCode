@@ -19,12 +19,7 @@ object Day9 {
             val newNext = next?.let {
                 val xDiff = abs(next.x - newX)
                 val yDiff = abs(next.y - newY)
-                if (
-                    (next.x == newX && next.y == newY) ||
-                    (xDiff == 1 && next.y == newY) ||
-                    (yDiff == 1 && next.x == newX) ||
-                    (xDiff == 1 && yDiff == 1)
-                ) {
+                if (xDiff < 2 && yDiff < 2) {
                     next // No need to move. At most one space away.
                 } else {
                     val verticalMove = when {
