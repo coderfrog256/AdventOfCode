@@ -3,44 +3,63 @@ package zone.frog.advent.twentytwo
 import java.io.File
 import java.lang.Math.abs
 
-// NOT: 5168
-typealias IntPair = Pair<Int,Int>
 object Day9 {
-    fun runSteps(lines: List<String>): Int {
-        fun newPosition(tail: IntPair, head: IntPair): IntPair {
-            val xDiff = abs(tail.first - head.first)
-            val yDiff = abs(tail.second - head.second)
-            return when {
-                tail == head -> tail
-                xDiff == 1 && tail.second == head.second -> tail
-                yDiff == 1 && tail.first == head.first -> tail
-                xDiff == 1 && yDiff == 1 -> tail
-                tail.first < head.first && tail.second == head.second -> head.copy(first = head.first-1)
-                tail.first > head.first && tail.second == head.second -> head.copy(first = head.first+1)
-                tail.second < head.second && tail.first == head.first -> head.copy(second = head.second-1)
-                tail.second > head.second && tail.first == head.first -> head.copy(second = head.second+1)
-                yDiff == 2 && xDiff == 1 -> head.copy(second = head.second+(if (head.second > tail.second) - 1 else 1))
-                xDiff == 2 && yDiff == 1 -> head.copy(first = head.first+(if (head.first > tail.first) - 1 else 1))
-                else -> throw IllegalStateException()
+    data class Knot(val x: Int = 0, val y: Int = 0, val next: Knot? = null) {
+        fun move(direction: String): Knot {
+            val newX = when (direction) {
+                "R", "UR", "DR" -> x + 1
+                "L", "UL", "DL" -> x - 1
+                else -> x
             }
+            val newY = when (direction) {
+                "U", "UR", "UL" -> y + 1
+                "D", "DR", "DL" -> y - 1
+                else -> y
+            }
+            val newNext = next?.let {
+                val xDiff = abs(next.x - newX)
+                val yDiff = abs(next.y - newY)
+                if (
+                    (next.x == newX && next.y == newY) ||
+                    (xDiff == 1 && next.y == newY) ||
+                    (yDiff == 1 && next.x == newX) ||
+                    (xDiff == 1 && yDiff == 1)
+                ) {
+                    next // No need to move. At most one space away.
+                } else {
+                    val verticalMove = when {
+                        newY > next.y -> "U"
+                        newY == next.y -> ""
+                        else -> "D"
+                    }
+                    val horizontalMove = when {
+                        newX > next.x -> "R"
+                        newX == next.x -> ""
+                        else -> "L"
+                    }
+                    next.move(verticalMove + horizontalMove)
+                }
+            }
+            return copy(x = newX, y = newY, next = newNext)
         }
 
-        val visited = mutableSetOf(0 to 0)
+        fun last(): Knot = next?.last() ?: this
+    }
 
-        var headPosition = 0 to 0
-        var tailPosition = 0 to 0
+    private fun runSteps(lines: List<String>, knots: Int): Int {
+        val visited = mutableSetOf(0 to 0)
+        var head = Knot()
+        repeat(knots - 1) {
+            head = head.copy(next = head)
+        }
 
         for (line in lines) {
             val (direction, count) = line.split(" ")
             repeat(count.toInt()) {
-                when(direction) {
-                    "R" -> headPosition = headPosition.copy(first = headPosition.first+1)
-                    "L" -> headPosition = headPosition.copy(first = headPosition.first-1)
-                    "U" -> headPosition = headPosition.copy(second = headPosition.second+1)
-                    "D" -> headPosition = headPosition.copy(second = headPosition.second-1)
-                }
-                tailPosition = newPosition(tailPosition, headPosition)
-                visited.add(tailPosition)
+                head = head.move(direction)
+
+                val last = head.last()
+                visited.add(last.x to last.y)
             }
         }
         return visited.size
@@ -49,9 +68,10 @@ object Day9 {
     fun scenarioOne(textFile: String) =
         File(textFile)
             .readLines()
-            .let { runSteps(it) }
+            .let { runSteps(it, 2) }
 
     fun scenarioTwo(textFile: String) =
         File(textFile)
-//            .readLines()
+            .readLines()
+            .let { runSteps(it, 10) }
 }
