@@ -6,14 +6,14 @@ import java.lang.Math.abs
 object Day9 {
     data class Knot(val x: Int = 0, val y: Int = 0, val next: Knot? = null) {
         fun move(direction: String): Knot {
-            val newX = when (direction) {
-                "R", "UR", "DR" -> x + 1
-                "L", "UL", "DL" -> x - 1
+            val newX = when {
+                direction.endsWith("R") -> x + 1
+                direction.endsWith("L") -> x - 1
                 else -> x
             }
-            val newY = when (direction) {
-                "U", "UR", "UL" -> y + 1
-                "D", "DR", "DL" -> y - 1
+            val newY = when {
+                direction.startsWith("U") -> y + 1
+                direction.startsWith("D") -> y - 1
                 else -> y
             }
             val newNext = next?.let {
