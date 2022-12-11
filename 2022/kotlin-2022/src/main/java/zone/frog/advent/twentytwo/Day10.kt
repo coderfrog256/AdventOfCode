@@ -40,5 +40,8 @@ object Day10 {
     }
 
     fun scenarioOne(textFile: String, checkIns: List<Int>) = applyCommands(File(textFile).readLines(), checkIns)
-    fun scenarioTwo(textFile: String) = renderAsciiArt(File(textFile).readLines())
+    fun scenarioTwo(textFile: String) = renderAsciiArt(File(textFile).readLines()).also {
+        // Double to characters for legibility
+        println(it.map { c -> if(c == '\n') '\n' else "$c$c" }.joinToString(""))
+    }
 }
