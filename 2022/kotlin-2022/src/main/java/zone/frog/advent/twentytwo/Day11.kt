@@ -12,11 +12,11 @@ object Day11 {
         val falseMonkeyId: Int,
         var inspectCount: Long = 0
     ) {
-        fun act(monkeys: Map<Int, Monkey>, commonDenominator: Long) {
+        fun act(monkeys: Map<Int, Monkey>, leastCommonMultiple: Long) {
             inspectCount += items.size
             for (item in items) {
                 val inspectedValue = when (worryDivisor) {
-                    null -> operation(item) % commonDenominator
+                    null -> operation(item) % leastCommonMultiple
                     else -> operation(item) / worryDivisor
                 }
                 val targetId = when {
@@ -70,15 +70,15 @@ object Day11 {
 
     private fun playMonkeyBall(monkeys: Map<Int, Monkey>, turns: Int): List<Long> {
         // Even with BigDecimal, the worries get too big!
-        // If we divide them by the GCD, it stays reasonable, while keeping the monkey-routing the same.
+        // If we divide them by the LCM, it stays reasonable, while keeping the monkey-routing the same.
         // This is safe as all the monkeys have primes as their divisors.
-        val commonDenominator = monkeys.values
+        val leastCommonMultiple = monkeys.values
             .map { it.testDivisor }
             .fold(1L) { acc, i -> acc * i }
 
         repeat(turns) {
             monkeys.values.forEach {
-                it.act(monkeys, commonDenominator)
+                it.act(monkeys, leastCommonMultiple)
             }
         }
 
