@@ -1,28 +1,26 @@
 package zone.frog.advent.twentytwo
 
 import java.io.File
-import java.math.BigDecimal
-import java.math.RoundingMode
 
 object Day11 {
     data class Monkey(
-        val worryDivisor: BigDecimal?,
-        val items: MutableList<BigDecimal>,
-        val operation: (BigDecimal) -> BigDecimal,
-        val testDivisor: BigDecimal,
+        val worryDivisor: Long?,
+        val items: MutableList<Long>,
+        val operation: (Long) -> Long,
+        val testDivisor: Long,
         val trueMonkeyId: Int,
         val falseMonkeyId: Int,
         var inspectCount: Long = 0
     ) {
-        fun act(monkeys: Map<Int, Monkey>, commonDenominator: BigDecimal) {
+        fun act(monkeys: Map<Int, Monkey>, commonDenominator: Long) {
             inspectCount += items.size
             for (item in items) {
                 val inspectedValue = when (worryDivisor) {
-                    null -> operation(item).remainder(commonDenominator)
-                    else -> operation(item).divide(worryDivisor, RoundingMode.DOWN)
+                    null -> operation(item) % commonDenominator
+                    else -> operation(item) / worryDivisor
                 }
                 val targetId = when {
-                    inspectedValue.remainder(testDivisor).compareTo(BigDecimal.ZERO) == 0 -> trueMonkeyId
+                    inspectedValue % testDivisor == 0L -> trueMonkeyId
                     else -> falseMonkeyId
                 }
                 monkeys[targetId]!!.items += inspectedValue
@@ -31,34 +29,33 @@ object Day11 {
         }
     }
 
-    private fun parseMonkey(worryDivisor: Long?, monkeyLines: List<String>): Pair<Int, Monkey> {
-        val (monkeyId) = Regex("Monkey (\\d+):").matchEntire(monkeyLines[0].trim())?.destructured
-            ?: throw IllegalArgumentException("Bad Monkey Id")
-        val (items) = Regex("Starting items: (.*)").matchEntire(monkeyLines[1].trim())?.destructured
-            ?: throw IllegalArgumentException("Bad Monkey Items")
-        val (operator, value) = Regex("Operation: new = old (\\S+) (\\S+)").matchEntire(monkeyLines[2].trim())?.destructured
-            ?: throw IllegalArgumentException("Bad Monkey Operation")
-        val (divisibleBy) = Regex("Test: divisible by (\\d+)").matchEntire(monkeyLines[3].trim())?.destructured
-            ?: throw IllegalArgumentException("Bad Monkey Test")
-        val (trueMonkeyId) = Regex("If true: throw to monkey (\\d+)").matchEntire(monkeyLines[4].trim())?.destructured
-            ?: throw IllegalArgumentException("Bad True Monkey")
-        val (falseMonkeyId) = Regex("If false: throw to monkey (\\d+)").matchEntire(monkeyLines[5].trim())?.destructured
-            ?: throw IllegalArgumentException("Bad false Monkey")
+    private fun parseMonkey(monkeyLines: List<String>, worryDivisor: Long?): Pair<Int, Monkey> {
+        val (monkeyId) = Regex("Monkey (\\d+):").matchEntire(monkeyLines[0])?.destructured
+            ?: throw IllegalArgumentException("Bad Monkey Id: ${monkeyLines[0]}")
+        val (items) = Regex("\\s+Starting items: (.*)").matchEntire(monkeyLines[1])?.destructured
+            ?: throw IllegalArgumentException("Bad Monkey Items: ${monkeyLines[1]}")
+        val (operator, value) = Regex("\\s+Operation: new = old (\\S+) (\\S+)").matchEntire(monkeyLines[2])?.destructured
+            ?: throw IllegalArgumentException("Bad Monkey Operation: ${monkeyLines[2]}")
+        val (divisibleBy) = Regex("\\s+Test: divisible by (\\d+)").matchEntire(monkeyLines[3])?.destructured
+            ?: throw IllegalArgumentException("Bad Monkey Test: ${monkeyLines[3]}")
+        val (trueMonkeyId) = Regex("\\s+If true: throw to monkey (\\d+)").matchEntire(monkeyLines[4])?.destructured
+            ?: throw IllegalArgumentException("Bad True Monkey Id: ${monkeyLines[4]}")
+        val (falseMonkeyId) = Regex("\\s+If false: throw to monkey (\\d+)").matchEntire(monkeyLines[5])?.destructured
+            ?: throw IllegalArgumentException("Bad False Monkey Id: ${monkeyLines[5]}")
 
-        val operation = if (operator == "*") { oldValue: BigDecimal ->
-            val resolvedValue = if (value == "old") oldValue else value.toLong().toBigDecimal()
+        val operation = if (operator == "*") { oldValue: Long ->
+            val resolvedValue = if (value == "old") oldValue else value.toLong()
             oldValue * resolvedValue
-        } else { oldValue: BigDecimal ->
-            val resolvedValue = if (value == "old") oldValue else value.toLong().toBigDecimal()
+        } else { oldValue: Long ->
+            val resolvedValue = if (value == "old") oldValue else value.toLong()
             oldValue + resolvedValue
         }
 
-        val bdDivisor = divisibleBy.toLong().toBigDecimal()
         return monkeyId.toInt() to Monkey(
-            worryDivisor?.toBigDecimal(),
-            items.split(",").map { it.trim().toBigDecimal() }.toMutableList(),
+            worryDivisor,
+            items.split(",").map { it.trim().toLong() }.toMutableList(),
             operation,
-            bdDivisor,
+            divisibleBy.toLong(),
             trueMonkeyId.toInt(),
             falseMonkeyId.toInt()
         )
@@ -67,15 +64,17 @@ object Day11 {
     private fun buildMonkeyMap(worryDivisor: Long?, lines: List<String>): Map<Int, Monkey> {
         return lines
             .filter { it.isNotBlank() }
-            .chunked(6)
-            .associate { parseMonkey(worryDivisor, it) }
-            .toSortedMap()
+            .chunked(6) //Chunk into monkey.
+            .associate { parseMonkey(it, worryDivisor) }
     }
 
     private fun playMonkeyBall(monkeys: Map<Int, Monkey>, turns: Int): List<Long> {
+        // Even with BigDecimal, the worries get too big!
+        // If we divide them by the GCD, it stays reasonable, while keeping the monkey-routing the same.
+        // This is safe as all the monkeys have primes as their divisors.
         val commonDenominator = monkeys.values
             .map { it.testDivisor }
-            .fold(1L.toBigDecimal()) { acc, i -> acc * i }
+            .fold(1L) { acc, i -> acc * i }
 
         repeat(turns) {
             monkeys.values.forEach {
