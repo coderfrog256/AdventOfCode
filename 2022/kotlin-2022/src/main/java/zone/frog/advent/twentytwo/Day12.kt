@@ -7,15 +7,33 @@ typealias IntPair = Pair<Int, Int>
 
 object Day12 {
     class Node(
-        val height: Int,
+        val letter: Char,
         var goodness: Int = Int.MAX_VALUE,
-        var left: Node? = null,
-        var right: Node? = null,
-        var up: Node? = null,
-        var down: Node? = null,
-        val incomingNodes: MutableList<Node> = mutableListOf()
+        private var left: Node? = null,
+        private var right: Node? = null,
+        private var up: Node? = null,
+        private var down: Node? = null,
+        private val incomingNodes: MutableList<Node> = mutableListOf()
     ) {
-        fun canAdd(other: Node) = other.height <= height + 1
+        val height = when (letter) {
+            'S' -> 0
+            'E' -> 'z'.code - 'a'.code
+            else -> letter.code - 'a'.code
+        }
+
+        fun tryAdd(other: Node, position: String) {
+            if (other.height <= height + 1) {
+                when (position) {
+                    "left" -> left = other
+                    "right" -> right = other
+                    "up" -> up = other
+                    "down" -> down = other
+                    else -> throw IllegalArgumentException("Invalid position: $position")
+                }
+                other.incomingNodes.add(this)
+            }
+        }
+
         private fun relations() = listOfNotNull(left, right, up, down)
 
         fun traverse(visited: Set<Node>, end: Node, steps: Int): Int? {
@@ -27,9 +45,7 @@ object Day12 {
                 .asSequence()
                 .filter { !visited.contains(it) }
                 .sortedBy { it.goodness }
-                .map { it.traverse(visited + it, end, steps + 1) }
-                .filter { it != null }
-                .firstOrNull()
+                .firstNotNullOf { it.traverse(visited + it, end, steps + 1) }
         }
 
         fun populateGoodness(goodness: Int, nodes: Map<IntPair, Node>) {
@@ -42,82 +58,40 @@ object Day12 {
     }
 
     private fun buildElevationMapWithStart(lines: List<String>): Pair<Node, Node> {
-        val (start, end, nodeMap) = buildMapCommon(lines)
-        return nodeMap[start]!! to nodeMap[end]!!
+        val (start, end, _) = buildMapCommon(lines)
+        return start to end
     }
 
     private fun buildElevationMapFromLowest(lines: List<String>): Pair<List<Node>, Node> {
         val (_, end, nodeMap) = buildMapCommon(lines)
-        return nodeMap.values.filter { it.height == 0 } to nodeMap[end]!!
+        return nodeMap.values.filter { it.height == 0 } to end
     }
 
-    private fun buildMapCommon(lines: List<String>): Triple<IntPair, IntPair, MutableMap<IntPair, Node>> {
-        var start: IntPair? = null
-        var end: IntPair? = null
-
-        val coordinateMap = lines.mapIndexed { yIndex, chars ->
-            yIndex to chars.mapIndexed { xIndex, char ->
-                xIndex to when (char) {
-                    'S' -> {
-                        start = xIndex to yIndex
-                        'a'.code
-                    }
-
-                    'E' -> {
-                        end = xIndex to yIndex
-                        'z'.code - 'a'.code
-                    }
-
-                    else -> char.code - 'a'.code
-                }
+    private fun buildMapCommon(lines: List<String>): Triple<Node, Node, Map<IntPair, Node>> {
+        val nodeMap: Map<IntPair, Node> = lines
+            .flatMapIndexed { yIndex, chars ->
+                chars.mapIndexed { xIndex, char -> (xIndex to yIndex) to Node(char) }
             }
-        }.fold<Pair<Int, List<Pair<Int, Int>>>, MutableMap<IntPair, Int>>(mutableMapOf()) { acc, pairs ->
-            pairs.second.forEach { pair ->
-                acc += (pair.first to pairs.first) to pair.second
-            }
-            acc
-        }
-        val nodeMap = mutableMapOf<IntPair, Node>()
+            .fold(mapOf()) { acc, pair -> acc + pair }
 
-        coordinateMap.forEach { (position, height) ->
-            val node = nodeMap.computeIfAbsent(position) { Node(height) }
-            val left = position.first - 1 to position.second
-            val right = position.first + 1 to position.second
-            val up = position.first to position.second - 1
-            val down = position.first to position.second + 1
-
-            if (left in coordinateMap) {
-                val leftNode = nodeMap.computeIfAbsent(left) { Node(coordinateMap[left]!!) }
-                if (node.canAdd(leftNode)) {
-                    node.left = leftNode
-                    leftNode.incomingNodes += node
-                }
-            }
-            if (right in coordinateMap) {
-                val rightNode = nodeMap.computeIfAbsent(right) { Node(coordinateMap[right]!!) }
-                if (node.canAdd(rightNode)) {
-                    node.right = rightNode
-                    rightNode.incomingNodes += node
-                }
-            }
-            if (up in coordinateMap) {
-                val upNode = nodeMap.computeIfAbsent(up) { Node(coordinateMap[up]!!) }
-                if (node.canAdd(upNode)) {
-                    node.up = upNode
-                    upNode.incomingNodes += node
-                }
-            }
-            if (down in coordinateMap) {
-                val downNode = nodeMap.computeIfAbsent(down) { Node(coordinateMap[down]!!) }
-                if (node.canAdd(downNode)) {
-                    node.down = downNode
-                    downNode.incomingNodes += node
-                }
+        fun tryAddPosition(from: IntPair, to: Node, position: String) {
+            if (from in nodeMap) {
+                val fromNode = nodeMap[from]!!
+                to.tryAdd(fromNode, position)
             }
         }
 
-        nodeMap[end]!!.populateGoodness(0, nodeMap)
-        return Triple(start!!, end!!, nodeMap)
+        nodeMap.forEach { (position, node) ->
+            tryAddPosition(position.first - 1 to position.second, node, "left")
+            tryAddPosition(position.first + 1 to position.second, node, "right")
+            tryAddPosition(position.first to position.second - 1, node, "up")
+            tryAddPosition(position.first to position.second + 1, node, "down")
+        }
+
+        val startNode = nodeMap.values.first { it.letter == 'S' }
+        val endNode = nodeMap.values.first { it.letter == 'E' }
+        endNode.populateGoodness(0, nodeMap)
+        return Triple(startNode, endNode, nodeMap)
     }
 
     private fun runSimulation(startPosition: Node, endPosition: Node): Int? {
