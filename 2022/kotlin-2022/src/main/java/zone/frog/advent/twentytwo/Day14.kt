@@ -59,7 +59,11 @@ object Day14 {
             var sand = startPoint
             var settled = false
             do {
-                if (sand.first + 1 >= grid.size || sand.second + 1 >= grid[sand.first + 1].size || sand.second - 1 < 0) {
+                //Look directly down, then down-left, then down-right. If all are taken, mark the grain as settled and drop a new one.
+                val down = sand.first + 1 to sand.second
+                val downLeft = sand.first + 1 to sand.second - 1
+                val downRight = sand.first + 1 to sand.second + 1
+                if (!grid.inRange(down) && !grid.inRange(downLeft) && !grid.inRange(downRight)) {
                     if (!scenarioTwo) {
                         return grains - 1 //-1 as the prompt wants to know when grains _start_ falling off, not the first grain to do so...
                     } else {
@@ -67,11 +71,7 @@ object Day14 {
                     }
                 }
 
-                //Look directly down, then down-left, then down-right. If all are taken, mark the grain as settled and drop a new one.
-                val down = sand.first + 1 to sand.second
-                val downLeft = sand.first + 1 to sand.second - 1
-                val downRight = sand.first + 1 to sand.second + 1
-                if (grid[downLeft] == '.') {
+                if (grid[down] == '.') {
                     sand = down
                 } else if (grid[downLeft] == '.') {
                     sand = downLeft
