@@ -80,7 +80,7 @@ object Day14 {
                     }
                 }
 
-                //Look directly down, then down-left, then down-right. If all are take, mark the grain as settled and drop a new one.
+                //Look directly down, then down-left, then down-right. If all are taken, mark the grain as settled and drop a new one.
                 if (grid[sand.first + 1][sand.second] == '.') {
                     sand = sand.first + 1 to sand.second
                 } else if (grid[sand.first + 1][sand.second - 1] == '.') {
