@@ -3,8 +3,6 @@ package zone.frog.advent.twentytwo
 import java.io.File
 import java.lang.IllegalArgumentException
 
-typealias IntPair = Pair<Int, Int>
-
 object Day12 {
     class Node(
         val letter: Char,

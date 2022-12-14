@@ -9,52 +9,38 @@ object Day14 {
 
     private fun parseLines(input: String): List<IntPair> {
         return input.split(" -> ")
-            .map { it.split(",").let { it[1].toInt() to it[0].toInt() } }
+            .map { positionPair -> positionPair.split(",").let { it[1].toInt() to it[0].toInt() } }
     }
 
     // For troubleshooting. Call in a debugger to print the current grid.
-    private fun printGrid(grid: MutableList<MutableList<Char>>) {
+    private fun printGrid(grid: MutableGrid<Char>) {
         println(grid.first().joinToString("") { "=" })
         println(grid.joinToString("\n") { it.joinToString("") })
         println("\n\n")
     }
 
-    private fun buildGrid(lines: List<String>, addFloor: Boolean): MutableList<MutableList<Char>> {
+    private fun buildGrid(lines: List<String>, addFloor: Boolean): MutableGrid<Char> {
         val gridPoints = lines.map { parseLines(it) }
         val height = gridPoints.flatMap { it.map { it.first + 1 } }.max()
-        val width = gridPoints.flatMap { it.map { (it.second + 1)*2 } }.max()
+        val width = gridPoints.flatMap { it.map { (it.second + 1) * 2 } }.max() // * 2 to widen the width for part 2.
 
-        //Initialize grid with .
+        //Initialize grid with `.`
         val grid = mutableListOf<MutableList<Char>>()
         repeat(height) {
             grid.add((0 until width).map { '.' }.toMutableList())
         }
 
-        //Draw lines. Take a starting point, move one unit drawing a # at each step until you reach the end.
-        //Repeat as needed.
         gridPoints.forEach { points ->
-            var current = points[0]
-            for (point in points) {
-                grid[current.first][current.second] = '#'
-                while (current != point) {
-                    if (current.first < point.first) {
-                        current = current.first + 1 to current.second
-                        grid[current.first][current.second] = '#'
-                    } else if (current.first > point.first) {
-                        current = current.first - 1 to current.second
-                        grid[current.first][current.second] = '#'
+            points.take(points.size - 1)
+                .forEachIndexed { i, start ->
+                    val end = points[i + 1]
+                    for (y in (start.first bidirectionalRange end.first)) {
+                        grid[y][start.second] = '#'
                     }
-
-                    if (current.second < point.second) {
-                        current = current.first to current.second + 1
-                        grid[current.first][current.second] = '#'
-                    } else if (current.second > point.second) {
-                        current = current.first to current.second - 1
-                        grid[current.first][current.second] = '#'
+                    for (x in (start.second bidirectionalRange end.second)) {
+                        grid[start.first][x] = '#'
                     }
                 }
-                current = point
-            }
         }
 
         if (addFloor) {
@@ -62,10 +48,11 @@ object Day14 {
             grid.add((0 until width).map { '~' }.toMutableList())
         }
 
+        printGrid(grid)
         return grid
     }
 
-    private fun dropSand(grid: MutableList<MutableList<Char>>, scenarioTwo: Boolean): Int {
+    private fun dropSand(grid: MutableGrid<Char>, scenarioTwo: Boolean): Int {
         var grains = 0
         while (true) {
             ++grains
@@ -81,16 +68,19 @@ object Day14 {
                 }
 
                 //Look directly down, then down-left, then down-right. If all are taken, mark the grain as settled and drop a new one.
-                if (grid[sand.first + 1][sand.second] == '.') {
-                    sand = sand.first + 1 to sand.second
-                } else if (grid[sand.first + 1][sand.second - 1] == '.') {
-                    sand = sand.first + 1 to sand.second - 1
-                } else if (grid[sand.first + 1][sand.second + 1] == '.') {
-                    sand = sand.first + 1 to sand.second + 1
+                val down = sand.first + 1 to sand.second
+                val downLeft = sand.first + 1 to sand.second - 1
+                val downRight = sand.first + 1 to sand.second + 1
+                if (grid[downLeft] == '.') {
+                    sand = down
+                } else if (grid[downLeft] == '.') {
+                    sand = downLeft
+                } else if (grid[downRight] == '.') {
+                    sand = downRight
                 } else {
-                    grid[sand.first][sand.second] = 'o'
+                    grid[sand] = 'o'
                     settled = true
-                    if(scenarioTwo && sand == startPoint) {
+                    if (scenarioTwo && sand == startPoint) {
                         return grains
                     }
                 }
@@ -101,7 +91,7 @@ object Day14 {
     fun scenarioOne(textFile: String) =
         File(textFile).readLines()
             .let { buildGrid(it, false) }
-            .let { dropSand(it,false) }
+            .let { dropSand(it, false) }
 
     fun scenarioTwo(textFile: String) =
         File(textFile).readLines()
