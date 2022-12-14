@@ -58,7 +58,7 @@ object Day14 {
             ++grains
             var sand = startPoint
             var settled = false
-            do {
+            while (!settled) {
                 //Look directly down, then down-left, then down-right. If all are taken, mark the grain as settled and drop a new one.
                 val down = sand.first + 1 to sand.second
                 val downLeft = sand.first + 1 to sand.second - 1
@@ -84,7 +84,7 @@ object Day14 {
                         return grains
                     }
                 }
-            } while (!settled)
+            }
         }
     }
 
