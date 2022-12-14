@@ -21,13 +21,13 @@ object Day14 {
 
     private fun buildGrid(lines: List<String>, addFloor: Boolean): MutableList<MutableList<Char>> {
         val gridPoints = lines.map { parseLines(it) }
-        val width = gridPoints.flatMap { it.map { it.first + 1 } }.max()
-        val height = gridPoints.flatMap { it.map { (it.second + 1)*2 } }.max()
+        val height = gridPoints.flatMap { it.map { it.first + 1 } }.max()
+        val width = gridPoints.flatMap { it.map { (it.second + 1)*2 } }.max()
 
         //Initialize grid with .
         val grid = mutableListOf<MutableList<Char>>()
-        repeat(width) {
-            grid.add((0 until height).map { '.' }.toMutableList())
+        repeat(height) {
+            grid.add((0 until width).map { '.' }.toMutableList())
         }
 
         //Draw lines. Take a starting point, move one unit drawing a # at each step until you reach the end.
@@ -58,8 +58,8 @@ object Day14 {
         }
 
         if (addFloor) {
-            grid.add((0 until height).map { '.' }.toMutableList())
-            grid.add((0 until height).map { '~' }.toMutableList())
+            grid.add((0 until width).map { '.' }.toMutableList())
+            grid.add((0 until width).map { '~' }.toMutableList())
         }
 
         return grid
