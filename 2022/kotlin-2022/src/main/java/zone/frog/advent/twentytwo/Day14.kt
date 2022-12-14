@@ -4,6 +4,7 @@ import java.io.File
 import java.lang.IllegalStateException
 
 object Day14 {
+    // y,x coordinates.
     private val startPoint = 0 to 500
 
     private fun parseLines(input: String): List<IntPair> {
@@ -22,11 +23,15 @@ object Day14 {
         val gridPoints = lines.map { parseLines(it) }
         val width = gridPoints.flatMap { it.map { it.first + 1 } }.max()
         val height = gridPoints.flatMap { it.map { (it.second + 1)*2 } }.max()
+
+        //Initialize grid with .
         val grid = mutableListOf<MutableList<Char>>()
         repeat(width) {
             grid.add((0 until height).map { '.' }.toMutableList())
         }
 
+        //Draw lines. Take a starting point, move one unit drawing a # at each step until you reach the end.
+        //Repeat as needed.
         gridPoints.forEach { points ->
             var current = points[0]
             for (point in points) {
@@ -68,8 +73,14 @@ object Day14 {
             var settled = false
             do {
                 if (sand.first + 1 >= grid.size || sand.second + 1 >= grid[sand.first + 1].size || sand.second - 1 < 0) {
-                    return if(scenarioTwo) throw IllegalStateException("Ran out of space. Should not happen in scenario two!") else grains - 1
+                    if (!scenarioTwo) {
+                        return grains - 1 //-1 as the prompt wants to know when grains _start_ falling off, not the first grain to do so...
+                    } else {
+                        throw IllegalStateException("Ran out of space. Should not happen in scenario two!")
+                    }
                 }
+
+                //Look directly down, then down-left, then down-right. If all are take, mark the grain as settled and drop a new one.
                 if (grid[sand.first + 1][sand.second] == '.') {
                     sand = sand.first + 1 to sand.second
                 } else if (grid[sand.first + 1][sand.second - 1] == '.') {
