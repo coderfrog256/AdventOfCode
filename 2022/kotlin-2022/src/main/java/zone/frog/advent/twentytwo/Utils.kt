@@ -1,6 +1,7 @@
 package zone.frog.advent.twentytwo
 
 typealias IntPair = Pair<Int, Int>
+typealias LongPair = Pair<Long, Long>
 typealias MutableGrid<T> = MutableList<MutableList<T>>
 
 // Returns a range that iterates over all elements, even if the RHS is after the LHS (this).
