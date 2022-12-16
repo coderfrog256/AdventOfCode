@@ -13,7 +13,8 @@ class Day16Test {
     internal fun sanityTest() {
         //Are our individualTurnValues correct for the example scenario?
         val valves = parseValves(File("../input/day16-test.txt").readLines())
-        assertEquals(1651,
+        assertEquals(
+            1651,
             valves["DD"]!!.individualTurnValue[2]!!
                     + valves["BB"]!!.individualTurnValue[5]!!
                     + valves["JJ"]!!.individualTurnValue[9]!!
@@ -27,7 +28,8 @@ class Day16Test {
     internal fun sanityTest2() {
         //Are our individualTurnValues correct for the example scenario?
         val valves = parseValves(File("../input/day16-test.txt").readLines())
-        assertEquals(1707,
+        assertEquals(
+            1707,
             valves["DD"]!!.individualTurnValuePart2[2]!!
                     + valves["JJ"]!!.individualTurnValuePart2[3]!!
                     + valves["HH"]!!.individualTurnValuePart2[7]!!
@@ -44,7 +46,7 @@ class Day16Test {
 
     @Test
     internal fun testScenarioOne() {
-        println(scenarioOne("../input/day16.txt"))
+        assertEquals(1775, scenarioOne("../input/day16.txt"))
     }
 
     @Test
@@ -54,6 +56,6 @@ class Day16Test {
 
     @Test
     internal fun testScenarioTwo() {
-        println(scenarioTwo("../input/day16.txt"))
+        assertEquals(2351, scenarioTwo("../input/day16.txt"))
     }
 }
