@@ -43,6 +43,7 @@ object Day16 {
         val memoizedStates = ConcurrentHashMap<MemoKey, Int>()
         val timeLimit = if(includeElephant) TIME_LIMIT_PART_2 else TIME_LIMIT
         val valveDrainAmount = if(includeElephant) Valve::individualTurnValuePart2 else Valve::individualTurnValue
+        val toEnable = valves.filter { it.value.flowRate > 0 }.count()
         fun visitValves(
             timer: Int,
             humanValve: Valve,
@@ -59,8 +60,6 @@ object Day16 {
             if (memoized != null) {
                 return memoized
             }
-
-            val toEnable = valves.filter { it.value.flowRate > 0 }.count()
 
             if (timer >= timeLimit) {
                 //We've the time limit, see how much has flowed.
@@ -87,7 +86,7 @@ object Day16 {
                     // The actor has chosen a new direction, but is still opening. Execute the walk next turn.
                     actorMoves.add(Move(actor, false))
                 } else {
-                    if (timer + 1 <= timeLimit && !enabled.contains(actor) && actor.flowRate > 0) {
+                    if (timer + 1 <= timeLimit && actor.flowRate > 0 && !enabled.contains(actor)) {
                         if (toEnable == enabled.size + 1) {
                             actorMoves.add(Move(actor, true))
                         } else {
