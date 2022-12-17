@@ -13,17 +13,16 @@ class Day17Test {
         println(scenarioOne("../input/day17-test.txt"))
     }
 
-    // 3059 too low
     @Test
     internal fun testScenarioOne() {
         println(scenarioOne("../input/day17.txt"))
     }
 
-    @Test
-    internal fun testTwo() {
-        println(scenarioTwo("../input/day17-test.txt"))
-    }
-
+//    @Test
+//    internal fun testTwo() {
+//        println(scenarioTwo("../input/day17-test.txt"))
+//    }
+//
     @Test
     internal fun testScenarioTwo() {
         println( scenarioTwo("../input/day17.txt"))
