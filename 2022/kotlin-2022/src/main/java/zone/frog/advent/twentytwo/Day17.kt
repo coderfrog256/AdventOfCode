@@ -1,6 +1,8 @@
 package zone.frog.advent.twentytwo
 
 import java.io.File
+import java.lang.Long.max
+import java.util.stream.Collectors
 
 
 object Day17 {
@@ -218,8 +220,8 @@ object Day17 {
         VERTICAL_LINE,
         SQUARE;
 
-        fun create(pieces: Map<LongPair, Piece>): Piece {
-            val y = (pieces.maxOfOrNull { it.key.second } ?: 0) + 3 + 1
+        fun create(stackTop: Long): Piece {
+            val y = stackTop + 3 + 1
             return when (this) {
                 HORIZONTAL_LINE -> HorizontalLine(y = y)
                 CROSS -> Cross(y = y)
@@ -259,37 +261,31 @@ object Day17 {
         val wind = wind.iterator()
         val pieces = mutableMapOf<LongPair, Piece>()
         var floor = 0L
+        var stackTop = 0L
 
         rockSequence()
             .takeWhile { toDrop-- > 0 }
             .forEach { rockType ->
                 var settled = false
-                val rock = rockType.create(pieces)
+                val rock = rockType.create(stackTop)
                 while (!settled) {
                     rock.shift(wind.next(), pieces)
                     settled = !rock.drop(pieces, floor)
                 }
-                val floorRange = rock.settle(pieces)
-//                val newFloor = floorRange
-//                    .filter { y ->
-//                        (0L until CHAMBER_WIDTH).all { x -> pieces.contains(x to y) }
-//                    }
-//                    .maxOrNull()
-//
-//                val newFloor = pieces.keys
-//                    .mapNotNull { it.second.takeIf { it in floorRange } }
-//                    .distinct()
-//                    .filter { y ->
-//                        (0L until CHAMBER_WIDTH).all { x -> pieces.contains(x to y) }
-//                    }
-//                    .max().orElse(-1)
-//                if(newFloor != null) {
-//                    println("Raising floor to $newFloor")
-//                    pieces.keys.filter { it.second <= newFloor }.toSet().forEach {
-//                        pieces.remove(it)
-//                    }
-//                    floor = newFloor
-//                }
+                val impactedRows = rock.settle(pieces)
+                val newFloor = impactedRows
+                    .filter { y ->
+                        (0L until CHAMBER_WIDTH).all { x -> pieces.contains(x to y) }
+                    }
+                    .maxOrNull()
+                stackTop = max(stackTop, impactedRows.max())
+
+                if(newFloor != null) {
+                    println("Raising floor to $newFloor")
+                    val toRemove = pieces.keys.parallelStream().filter { it.second <= newFloor }.collect(Collectors.toSet())
+                    pieces.keys.removeAll(toRemove)
+                    floor = newFloor
+                }
             }
 
         return pieces.maxOf { it.key.second }
