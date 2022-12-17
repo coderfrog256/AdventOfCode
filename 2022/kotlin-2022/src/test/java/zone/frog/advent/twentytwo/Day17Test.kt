@@ -25,6 +25,6 @@ class Day17Test {
 
     @Test
     internal fun testScenarioTwo() {
-//        println(scenarioTwo("../input/day17.txt"))
+        println(scenarioTwo("../input/day17.txt"))
     }
 }

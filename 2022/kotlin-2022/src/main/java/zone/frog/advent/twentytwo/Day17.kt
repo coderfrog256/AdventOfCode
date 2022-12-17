@@ -7,12 +7,13 @@ import java.util.stream.Collectors
 
 object Day17 {
     const val CHAMBER_WIDTH = 7
-//    data class MemoKey(val windOffset: Int, val rockType: RockPattern, val remaining: Set<LongPair>)
-//    data class MemoValue(val windTicks: Int, val rocksDropped: Int, val floorOffset: Long, val remaining: Set<LongPair>)
+
+    data class MemoKey(val windOffset: Int, val rockType: RockPattern, val remaining: Set<LongPair>)
+    data class MemoValue(val windTicks: Int, val rocksDropped: Int, val floorOffset: Long, val remaining: Set<LongPair>)
 
     interface Piece {
         fun shift(direction: Char, pieces: Set<LongPair>)
-        fun drop(pieces: Set<LongPair>, floor: Long): Boolean
+        fun drop(pieces: Set<LongPair>): Boolean
         fun settle(pieces: MutableSet<LongPair>): Collection<Long>
     }
 
@@ -25,9 +26,9 @@ object Day17 {
             }
         }
 
-        override fun drop(pieces: Set<LongPair>, floor: Long): Boolean {
+        override fun drop(pieces: Set<LongPair>): Boolean {
             val newY = y - 1
-            if (newY == floor) {
+            if (newY == 0L) {
                 return false
             }
 
@@ -64,9 +65,9 @@ object Day17 {
             }
         }
 
-        override fun drop(pieces: Set<LongPair>, floor: Long): Boolean {
+        override fun drop(pieces: Set<LongPair>): Boolean {
             val newY = y - 1
-            if (newY == floor) {
+            if (newY == 0L) {
                 return false
             }
 
@@ -88,7 +89,7 @@ object Day17 {
             pieces.add(x + 1 to y + 2)
             pieces.add(x + 2 to y + 1)
 
-            return listOf(y, y+1, y+2)
+            return listOf(y, y + 1, y + 2)
         }
     }
 
@@ -115,9 +116,9 @@ object Day17 {
             }
         }
 
-        override fun drop(pieces: Set<LongPair>, floor: Long): Boolean {
+        override fun drop(pieces: Set<LongPair>): Boolean {
             val newY = y - 1
-            if (newY == floor) {
+            if (newY == 0L) {
                 return false
             }
 
@@ -157,9 +158,9 @@ object Day17 {
             x += 1 * if (movingRight) 1 else -1
         }
 
-        override fun drop(pieces: Set<LongPair>, floor: Long): Boolean {
+        override fun drop(pieces: Set<LongPair>): Boolean {
             val newY = y - 1
-            if (newY == floor || pieces.contains(x to newY)) {
+            if (newY == 0L || pieces.contains(x to newY)) {
                 return false
             }
             y = newY
@@ -190,9 +191,9 @@ object Day17 {
             x += 1 * if (movingRight) 1 else -1
         }
 
-        override fun drop(pieces: Set<LongPair>, floor: Long): Boolean {
+        override fun drop(pieces: Set<LongPair>): Boolean {
             val newY = y - 1
-            if (newY == floor) {
+            if (newY == 0L) {
                 return false
             }
 
@@ -211,7 +212,7 @@ object Day17 {
             pieces.add(x to y)
             pieces.add(x to y + 1)
 
-            return listOf(y, y+1)
+            return listOf(y, y + 1)
         }
     }
 
@@ -244,8 +245,8 @@ object Day17 {
 
     private fun windSequence(line: String) = sequence {
         while (true) {
-            line.forEach {
-                yield(it)
+            line.forEachIndexed { i, c ->
+                yield(i to c)
             }
         }
     }
@@ -258,21 +259,44 @@ object Day17 {
 //        }
 //    }
 
-    fun dropRocks(wind: Sequence<Char>, toDrop: Long): Long {
+    fun dropRocks(wind: Sequence<Pair<Int,Char>>, toDrop: Long): Long {
         var toDrop = toDrop
         val wind = wind.iterator()
-        val pieces = mutableSetOf<LongPair>()
+        var pieces = mutableSetOf<LongPair>()
         var floor = 0L
         var stackTop = 0L
+
+        val memo = mutableMapOf<MemoKey, MemoValue>()
+        var activeKey: MemoKey? = null
+        var windTicks = 0
+        var rocksToSkip = 0
 
         rockSequence()
             .takeWhile { toDrop-- > 0 }
             .forEach { rockType ->
+                if(rocksToSkip > 0) {
+                    rocksToSkip--
+                    return@forEach
+                }
                 var settled = false
                 val rock = rockType.create(stackTop)
                 while (!settled) {
-                    rock.shift(wind.next(), pieces)
-                    settled = !rock.drop(pieces, floor)
+                    ++windTicks
+                    val (windOffset, direction) = wind.next()
+                    if(activeKey == null) {
+                        activeKey = MemoKey(windOffset, rockType, HashSet(pieces))
+
+                        val memoized = memo[activeKey]
+                        if(memoized != null) {
+                            repeat(memoized.windTicks-1) {wind.next()}
+                            rocksToSkip = memoized.rocksDropped-1
+                            floor += memoized.floorOffset
+                            pieces = HashSet(memoized.remaining)
+                        }
+                    }
+
+                    rock.shift(direction, pieces)
+                    settled = !rock.drop(pieces)
                 }
                 val impactedRows = rock.settle(pieces)
                 val newFloor = impactedRows
@@ -282,15 +306,18 @@ object Day17 {
                     .maxOrNull()
                 stackTop = max(stackTop, impactedRows.max())
 
-                if(newFloor != null) {
-                    println("Raising floor to $newFloor")
-                    val toRemove = pieces.parallelStream().filter { it.second <= newFloor }.collect(Collectors.toSet())
-                    pieces.removeAll(toRemove)
-                    floor = newFloor
+                if (newFloor != null) {
+                    println("Raising floor to ${newFloor + floor}")
+                    pieces = pieces.parallelStream()
+                        .map { it.copy(second=it.second - newFloor) }
+                        .filter { it.second >= 0L }
+                        .collect(Collectors.toSet())
+                    floor += newFloor
+                    stackTop -= newFloor
                 }
             }
 
-        return pieces.maxOf { it.second }
+        return pieces.maxOf { it.second } + floor
     }
 
     fun scenarioOne(textFile: String) =
