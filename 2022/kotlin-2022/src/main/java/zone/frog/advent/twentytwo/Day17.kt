@@ -7,6 +7,8 @@ import java.util.stream.Collectors
 
 object Day17 {
     const val CHAMBER_WIDTH = 7
+//    data class MemoKey(val windOffset: Int, val rockType: RockPattern, val remaining: Set<LongPair>)
+//    data class MemoValue(val windTicks: Int, val rocksDropped: Int, val floorOffset: Long, val remaining: Set<LongPair>)
 
     interface Piece {
         fun shift(direction: Char, pieces: Set<LongPair>)
@@ -95,8 +97,8 @@ object Day17 {
             val movingRight = direction == '>'
             if (!movingRight) {
                 val leftCheck = x - 1 to y
-                    x -= 1
                 if (leftCheck.first >= 0 && !pieces.contains(leftCheck)) {
+                    x -= 1
                 }
             } else {
                 val rightWall = x + 3
