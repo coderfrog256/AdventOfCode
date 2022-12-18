@@ -1,7 +1,6 @@
 package zone.frog.advent.twentytwo
 
 import java.io.File
-import java.lang.Long.max
 import java.util.stream.Collectors
 
 
@@ -9,7 +8,14 @@ object Day17 {
     const val CHAMBER_WIDTH = 7
 
     data class MemoKey(val windIndex: Int, val rockIndex: Int, val remaining: Set<LongPair>)
-    data class MemoValue(val windIndex: Int, val rockIndex: Int, val rocksDropped: Long, val floorOffset: Long, val remaining: Set<LongPair>, val nextKey: MemoKey)
+    data class MemoValue(
+        val windIndex: Int,
+        val rockIndex: Int,
+        val rocksDropped: Long,
+        val floorOffset: Long,
+        val remaining: Set<LongPair>,
+        val nextKey: MemoKey
+    )
 
     interface Piece {
         fun shift(direction: Char, pieces: Set<LongPair>)
@@ -235,10 +241,11 @@ object Day17 {
         }
     }
 
-    fun dropRocks(input: String, toDrop: Long): Long {
-        var toDrop = toDrop
+    fun dropRocks(input: String, totalToDrop: Long): Long {
+        var remainingToDrop = totalToDrop
         var rockOffset = 0
         var windOffset = 0
+
         fun nextRock(): RockPattern {
             rockOffset %= RockPattern.values().size
             return RockPattern.values()[rockOffset++]
@@ -255,71 +262,64 @@ object Day17 {
         val memo = mutableMapOf<MemoKey, MemoValue>()
         var rocksDropped = 0
         var activeKey = MemoKey(windOffset, rockOffset, HashSet(pieces))
-        var checkMemo = true
 
-        //-- , or -- prefix?
-        drop@ while (toDrop-- > 0) {
-            val rockType = nextRock()
-            var settled = false
-            val rock = rockType.create(pieces.maxOfOrNull { it.second }?:0)
+        drop@ while (remainingToDrop-- > 0) {
+            val rock = nextRock().create(pieces.maxOfOrNull { it.second } ?: 0)
             ++rocksDropped
+
+            var settled = false
             while (!settled) {
                 val direction = nextWind()
 
-                if (checkMemo) {
-                    val memoized = memo[activeKey]
-                    if (memoized != null && memoized.rocksDropped < toDrop) {
-                        println("Jumping ${memoized.rocksDropped} rocks. Remaining=${toDrop - memoized.rocksDropped}")
+                // Check if there's a memoized update for this configuration.
+                // Only use it if it won't push us above the number of rocks we need to drop...
+                val memoized = memo[activeKey]
+                if (memoized != null && memoized.rocksDropped < remainingToDrop) {
+                    println("Jumping ${memoized.rocksDropped} rocks. Remaining=${remainingToDrop - memoized.rocksDropped}")
 
-                        // Try to merge memos. If we know this and next, make this point to next's end result.
-                        // Note once a memo merges into itself this grows VERY fast.
-                        val nextMemo = memo[memoized.nextKey]
-                        if (nextMemo != null && memoized.rocksDropped + nextMemo.rocksDropped < toDrop) {
-                            memo[activeKey] = MemoValue(
-                                windIndex = nextMemo.windIndex,
-                                rockIndex = nextMemo.rockIndex,
-                                rocksDropped = memoized.rocksDropped + nextMemo.rocksDropped,
-                                floorOffset = memoized.floorOffset + nextMemo.floorOffset,
-                                remaining = nextMemo.remaining,
-                                nextKey = nextMemo.nextKey
-                            )
-                        }
-
-                        windOffset = memoized.windIndex
-                        rockOffset = memoized.rockIndex
-                        toDrop -= memoized.rocksDropped-1
-                        floor += memoized.floorOffset
-                        pieces = HashSet(memoized.remaining)
-                        rocksDropped = 0
-                        activeKey = memoized.nextKey
-                        continue@drop
-                    } else {
-                        checkMemo = false
+                    // Try to merge memos. If we know this and its next, make this point to next's result.
+                    // Note once a memo merges into itself this grows VERY fast.
+                    val nextMemo = memo[memoized.nextKey]
+                    if (nextMemo != null && memoized.rocksDropped + nextMemo.rocksDropped < remainingToDrop) {
+                        memo[activeKey] = MemoValue(
+                            windIndex = nextMemo.windIndex,
+                            rockIndex = nextMemo.rockIndex,
+                            rocksDropped = memoized.rocksDropped + nextMemo.rocksDropped,
+                            floorOffset = memoized.floorOffset + nextMemo.floorOffset,
+                            remaining = nextMemo.remaining,
+                            nextKey = nextMemo.nextKey
+                        )
                     }
+
+                    windOffset = memoized.windIndex
+                    rockOffset = memoized.rockIndex
+                    remainingToDrop -= memoized.rocksDropped - 1
+                    floor += memoized.floorOffset
+                    pieces = HashSet(memoized.remaining)
+                    rocksDropped = 0
+                    activeKey = memoized.nextKey
+                    continue@drop
                 }
                 rock.shift(direction, pieces)
                 settled = !rock.drop(pieces)
             }
 
-            val impactedRows = rock.settle(pieces)
-            val newFloor = impactedRows
-                .filter { y ->
-                    (0L until CHAMBER_WIDTH).all { x -> pieces.contains(x to y) }
-                }
+            val newFloor = rock.settle(pieces)
+                .filter { y -> (0L until CHAMBER_WIDTH).all { x -> pieces.contains(x to y) } }
                 .maxOrNull()
 
             if (newFloor != null) {
-                println("Raising floor to ${newFloor + floor} Remaining=${toDrop}")
-                pieces = pieces.parallelStream()
+                println("Raising floor to ${newFloor + floor} Remaining=${remainingToDrop}")
+                pieces = pieces
                     .map { it.copy(second = it.second - newFloor) }
                     .filter { it.second >= 0L }
-                    .collect(Collectors.toSet())
+                    .toMutableSet()
                 floor += newFloor
 
                 val newKey = MemoKey(windOffset, rockOffset, HashSet(pieces))
-                memo[activeKey] = MemoValue(windOffset, rockOffset, rocksDropped.toLong(), newFloor, HashSet(pieces), newKey)
+                memo[activeKey] =
+                    MemoValue(windOffset, rockOffset, rocksDropped.toLong(), newFloor, HashSet(pieces), newKey)
                 activeKey = newKey
-                checkMemo = true
                 rocksDropped = 0
             }
         }
