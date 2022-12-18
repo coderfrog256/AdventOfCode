@@ -8,8 +8,8 @@ import java.util.stream.Collectors
 object Day17 {
     const val CHAMBER_WIDTH = 7
 
-    data class MemoKey(val windOffset: Int, val rockType: RockPattern, val remaining: Set<LongPair>)
-    data class MemoValue(val windTicks: Int, val rocksDropped: Int, val floorOffset: Long, val remaining: Set<LongPair>)
+    data class MemoKey(val windIndex: Int, val rockIndex: Int, val remaining: Set<LongPair>)
+    data class MemoValue(val windIndex: Int,  val windTicks: Long, val rocksDropped: Long, val floorOffset: Long, val remaining: Set<LongPair>)
 
     interface Piece {
         fun shift(direction: Char, pieces: Set<LongPair>)
@@ -259,72 +259,114 @@ object Day17 {
 //        }
 //    }
 
-    fun dropRocks(wind: Sequence<Pair<Int,Char>>, toDrop: Long): Long {
+    fun dropRocks(input: String, toDrop: Long): Long {
         var toDrop = toDrop
-        val wind = wind.iterator()
+        var rockOffset = 0
+        var windOffset = 0
+        fun nextRock(): RockPattern {
+            rockOffset %= RockPattern.values().size
+            return RockPattern.values()[rockOffset++]
+        }
+
+        fun nextWind(): Char {
+            windOffset %= input.length
+            return input[windOffset++]
+        }
+
         var pieces = mutableSetOf<LongPair>()
         var floor = 0L
         var stackTop = 0L
 
         val memo = mutableMapOf<MemoKey, MemoValue>()
-        var activeKey: MemoKey? = null
         var windTicks = 0
-        var rocksToSkip = 0
+        var rocksDropped = 0
+        var activeKey = MemoKey(windOffset, rockOffset, HashSet(pieces))
+        var checkMemo = true
 
-        rockSequence()
-            .takeWhile { toDrop-- > 0 }
-            .forEach { rockType ->
-                if(rocksToSkip > 0) {
-                    rocksToSkip--
-                    return@forEach
-                }
-                var settled = false
-                val rock = rockType.create(stackTop)
-                while (!settled) {
-                    ++windTicks
-                    val (windOffset, direction) = wind.next()
-                    if(activeKey == null) {
-                        activeKey = MemoKey(windOffset, rockType, HashSet(pieces))
+        //-- , or -- prefix?
+        drop@ while (toDrop-- > 0) {
+            val rockType = nextRock()
+            var settled = false
+            val rock = rockType.create(stackTop)
+            ++rocksDropped
+            while (!settled) {
+                val direction = nextWind()
+                ++windTicks
 
-                        val memoized = memo[activeKey]
-                        if(memoized != null) {
-                            repeat(memoized.windTicks-1) {wind.next()}
-                            rocksToSkip = memoized.rocksDropped-1
-                            floor += memoized.floorOffset
-                            pieces = HashSet(memoized.remaining)
+                if (checkMemo) {
+                    val memoized = memo[activeKey]
+                    if (memoized != null && memoized.rocksDropped < toDrop) {
+                        println("Jumping ${memoized.rocksDropped} rocks. Remaining=${toDrop - memoized.rocksDropped}")
+
+                        val nextKey = MemoKey(
+                            windIndex = ((windOffset + memoized.windTicks - 1) % input.length).toInt(),
+                            rockIndex = ((rockOffset + memoized.rocksDropped) % RockPattern.values().size).toInt(),
+                            remaining = memoized.remaining
+                        )
+
+                        val nextMemo = memo[nextKey]
+                        if (nextMemo != null && memoized.rocksDropped + nextMemo.rocksDropped < toDrop) {
+                            memo[activeKey] = MemoValue(
+                                windIndex = nextMemo.windIndex,
+                                windTicks = memoized.windTicks + nextMemo.windTicks,
+                                rocksDropped = memoized.rocksDropped + nextMemo.rocksDropped,
+                                floorOffset = memoized.floorOffset + nextMemo.floorOffset,
+                                remaining = nextMemo.remaining
+                            )
                         }
-                    }
 
-                    rock.shift(direction, pieces)
-                    settled = !rock.drop(pieces)
-                }
-                val impactedRows = rock.settle(pieces)
-                val newFloor = impactedRows
-                    .filter { y ->
-                        (0L until CHAMBER_WIDTH).all { x -> pieces.contains(x to y) }
+                        //4623 is last new floor
+                        windOffset = memoized.windIndex
+                        rockOffset = ((rockOffset + memoized.rocksDropped) % RockPattern.values().size).toInt()
+                        toDrop -= memoized.rocksDropped
+                        floor += memoized.floorOffset
+                        pieces = HashSet(memoized.remaining)
+                        windTicks = 0
+                        rocksDropped = 0
+                        activeKey = MemoKey(windOffset, rockOffset, HashSet(pieces))
+                        continue@drop
+                    } else {
+                        checkMemo = false
                     }
-                    .maxOrNull()
-                stackTop = max(stackTop, impactedRows.max())
-
-                if (newFloor != null) {
-                    println("Raising floor to ${newFloor + floor}")
-                    pieces = pieces.parallelStream()
-                        .map { it.copy(second=it.second - newFloor) }
-                        .filter { it.second >= 0L }
-                        .collect(Collectors.toSet())
-                    floor += newFloor
-                    stackTop -= newFloor
                 }
+                rock.shift(direction, pieces)
+                settled = !rock.drop(pieces)
             }
+
+            val impactedRows = rock.settle(pieces)
+            val newFloor = impactedRows
+                .filter { y ->
+                    (0L until CHAMBER_WIDTH).all { x -> pieces.contains(x to y) }
+                }
+                .maxOrNull()
+            stackTop = max(stackTop, impactedRows.max())
+
+            if (newFloor != null) {
+                println("Raising floor to ${newFloor + floor} Remaining=${toDrop}")
+                pieces = pieces.parallelStream()
+                    .map { it.copy(second = it.second - newFloor) }
+                    .filter { it.second >= 0L }
+                    .collect(Collectors.toSet())
+                floor += newFloor
+                stackTop -= newFloor
+
+                memo[activeKey] = MemoValue(windOffset, windTicks.toLong(), rocksDropped.toLong(), newFloor, HashSet(pieces))
+                activeKey = MemoKey(windOffset, rockOffset, HashSet(pieces))
+                checkMemo = true
+                windTicks = 0
+                rocksDropped = 0
+            }
+        }
 
         return pieces.maxOf { it.second } + floor
     }
 
     fun scenarioOne(textFile: String) =
         File(textFile).readText()
-            .let { dropRocks(windSequence(it), 2022L) }
+            .let { dropRocks(it, 2022L) }
 
+    // 1549243930622 is too low
     fun scenarioTwo(textFile: String) =
         File(textFile).readText()
-            .let { dropRocks(windSequence(it), 1000000000000L) }
+            .let { dropRocks(it, 1000000000000L) }
 }
