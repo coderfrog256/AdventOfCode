@@ -20,17 +20,9 @@ object Day18 {
         line.split(",")
             .let { Cube(it[0].toInt(), it[1].toInt(), it[2].toInt()) }
 
-    private fun getAdjacent(cube: Cube, cubeSpace: CubeSpace): List<Cube> {
-        val (x, y, z) = cube
-        val adjacent = mutableListOf<Cube>()
-        cubeSpace[x][y].getOrNull(z - 1)?.let { adjacent.add(it) }
-        cubeSpace[x][y].getOrNull(z + 1)?.let { adjacent.add(it) }
-        cubeSpace[x].getOrNull(y - 1)?.get(z)?.let { adjacent.add(it) }
-        cubeSpace[x].getOrNull(y + 1)?.get(z)?.let { adjacent.add(it) }
-        cubeSpace.getOrNull(x - 1)?.get(y)?.get(z)?.let { adjacent.add(it) }
-        cubeSpace.getOrNull(x + 1)?.get(y)?.get(z)?.let { adjacent.add(it) }
-        return adjacent
-    }
+    private fun getActualNeighbors(cube: Cube, cubeSpace: CubeSpace) =
+        cube.getPossibleNeighbors()
+            .mapNotNull { cubeSpace.getOrNull(it.x)?.getOrNull(it.y)?.getOrNull(it.z) }
 
     private fun evalArea(cubes: List<Cube>): Int {
         val cubeSpace: CubeSpace = (0..cubes.maxOf { it.x })
@@ -49,7 +41,7 @@ object Day18 {
             for (y in cubeSpace[x].indices) {
                 for (z in cubeSpace[x][y].indices) {
                     val cube = cubeSpace[x][y][z] ?: continue
-                    sides += 6 - getAdjacent(cube, cubeSpace).size
+                    sides += 6 - getActualNeighbors(cube, cubeSpace).count()
                 }
             }
         }
@@ -66,19 +58,21 @@ object Day18 {
         val minZ = cubes.minOf { it.z } - 1
         val maxZ = cubes.maxOf { it.z } + 1
 
-        // Build a set of all air cubes (those not in input). Start with the first cube (guaranteed to be air as it's -1 for all dimensions)
+        // Build a set of all air cubes (those not in input).
+        // Start with the first cube (guaranteed to be air as it's -1 for all dimensions) and expand everything.
         val airCubes = mutableSetOf<Cube>()
-        val workQueue = ArrayDeque<Cube>()
-        workQueue += Cube(minX, minY, minZ)
+        val cubesToExpand = ArrayDeque<Cube>()
+        cubesToExpand += Cube(minX, minY, minZ)
 
-        while (!workQueue.isEmpty()) {
-            val work = workQueue.removeFirst()
-            airCubes += work
+        while (!cubesToExpand.isEmpty()) {
+            val airCube = cubesToExpand.removeFirst()
+            airCubes += airCube
 
-            work.getPossibleNeighbors()
+            // Get neighbors that are in range. If it's an unseen air-cube, add it to the queue to expand.
+            airCube.getPossibleNeighbors()
                 .filter { it.x in minX..maxX && it.y in minY..maxY && it.z in minZ..maxZ }
-                .filter { !cubes.contains(it) && !airCubes.contains(it) && !workQueue.contains(it) }
-                .forEach { workQueue.add(it) }
+                .filter { !cubes.contains(it) && !airCubes.contains(it) && !cubesToExpand.contains(it) }
+                .forEach { cubesToExpand.add(it) }
         }
 
         // How many of those air cubes have a neighbor that is from our input.
@@ -92,7 +86,6 @@ object Day18 {
             .map { parseCube(it) }
             .let { evalArea(it) }
 
-    //1959 is too low
     fun scenarioTwo(textFile: String) =
         File(textFile).readLines()
             .map { parseCube(it) }
