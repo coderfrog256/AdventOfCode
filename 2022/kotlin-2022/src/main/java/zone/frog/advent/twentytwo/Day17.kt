@@ -9,7 +9,7 @@ object Day17 {
     const val CHAMBER_WIDTH = 7
 
     data class MemoKey(val windIndex: Int, val rockIndex: Int, val remaining: Set<LongPair>)
-    data class MemoValue(val windIndex: Int,  val windTicks: Long, val rocksDropped: Long, val floorOffset: Long, val remaining: Set<LongPair>)
+    data class MemoValue(val windIndex: Int, val rockIndex: Int, val rocksDropped: Long, val floorOffset: Long, val remaining: Set<LongPair>, val nextKey: MemoKey)
 
     interface Piece {
         fun shift(direction: Char, pieces: Set<LongPair>)
@@ -235,30 +235,6 @@ object Day17 {
         }
     }
 
-    private fun rockSequence() = sequence {
-        while (true) {
-            RockPattern.values().forEach {
-                yield(it)
-            }
-        }
-    }
-
-    private fun windSequence(line: String) = sequence {
-        while (true) {
-            line.forEachIndexed { i, c ->
-                yield(i to c)
-            }
-        }
-    }
-//
-//    fun printState(falling: Piece, pieces: Set<LongPair>) {
-//        val tempState = HashMap(pieces)
-//        falling.settle(tempState)
-//        for (y in 0..tempState.maxOf { it.key.second }) {
-//            for (x in 0 until CHAMBER_WIDTH)
-//        }
-//    }
-
     fun dropRocks(input: String, toDrop: Long): Long {
         var toDrop = toDrop
         var rockOffset = 0
@@ -275,10 +251,8 @@ object Day17 {
 
         var pieces = mutableSetOf<LongPair>()
         var floor = 0L
-        var stackTop = 0L
 
         val memo = mutableMapOf<MemoKey, MemoValue>()
-        var windTicks = 0
         var rocksDropped = 0
         var activeKey = MemoKey(windOffset, rockOffset, HashSet(pieces))
         var checkMemo = true
@@ -287,43 +261,37 @@ object Day17 {
         drop@ while (toDrop-- > 0) {
             val rockType = nextRock()
             var settled = false
-            val rock = rockType.create(stackTop)
+            val rock = rockType.create(pieces.maxOfOrNull { it.second }?:0)
             ++rocksDropped
             while (!settled) {
                 val direction = nextWind()
-                ++windTicks
 
                 if (checkMemo) {
                     val memoized = memo[activeKey]
                     if (memoized != null && memoized.rocksDropped < toDrop) {
                         println("Jumping ${memoized.rocksDropped} rocks. Remaining=${toDrop - memoized.rocksDropped}")
 
-                        val nextKey = MemoKey(
-                            windIndex = ((windOffset + memoized.windTicks - 1) % input.length).toInt(),
-                            rockIndex = ((rockOffset + memoized.rocksDropped) % RockPattern.values().size).toInt(),
-                            remaining = memoized.remaining
-                        )
-
-                        val nextMemo = memo[nextKey]
+                        // Try to merge memos. If we know this and next, make this point to next's end result.
+                        // Note once a memo merges into itself this grows VERY fast.
+                        val nextMemo = memo[memoized.nextKey]
                         if (nextMemo != null && memoized.rocksDropped + nextMemo.rocksDropped < toDrop) {
                             memo[activeKey] = MemoValue(
                                 windIndex = nextMemo.windIndex,
-                                windTicks = memoized.windTicks + nextMemo.windTicks,
+                                rockIndex = nextMemo.rockIndex,
                                 rocksDropped = memoized.rocksDropped + nextMemo.rocksDropped,
                                 floorOffset = memoized.floorOffset + nextMemo.floorOffset,
-                                remaining = nextMemo.remaining
+                                remaining = nextMemo.remaining,
+                                nextKey = nextMemo.nextKey
                             )
                         }
 
-                        //4623 is last new floor
                         windOffset = memoized.windIndex
-                        rockOffset = ((rockOffset + memoized.rocksDropped) % RockPattern.values().size).toInt()
-                        toDrop -= memoized.rocksDropped
+                        rockOffset = memoized.rockIndex
+                        toDrop -= memoized.rocksDropped-1
                         floor += memoized.floorOffset
                         pieces = HashSet(memoized.remaining)
-                        windTicks = 0
                         rocksDropped = 0
-                        activeKey = MemoKey(windOffset, rockOffset, HashSet(pieces))
+                        activeKey = memoized.nextKey
                         continue@drop
                     } else {
                         checkMemo = false
@@ -339,7 +307,6 @@ object Day17 {
                     (0L until CHAMBER_WIDTH).all { x -> pieces.contains(x to y) }
                 }
                 .maxOrNull()
-            stackTop = max(stackTop, impactedRows.max())
 
             if (newFloor != null) {
                 println("Raising floor to ${newFloor + floor} Remaining=${toDrop}")
@@ -348,12 +315,11 @@ object Day17 {
                     .filter { it.second >= 0L }
                     .collect(Collectors.toSet())
                 floor += newFloor
-                stackTop -= newFloor
 
-                memo[activeKey] = MemoValue(windOffset, windTicks.toLong(), rocksDropped.toLong(), newFloor, HashSet(pieces))
-                activeKey = MemoKey(windOffset, rockOffset, HashSet(pieces))
+                val newKey = MemoKey(windOffset, rockOffset, HashSet(pieces))
+                memo[activeKey] = MemoValue(windOffset, rockOffset, rocksDropped.toLong(), newFloor, HashSet(pieces), newKey)
+                activeKey = newKey
                 checkMemo = true
-                windTicks = 0
                 rocksDropped = 0
             }
         }
@@ -365,7 +331,6 @@ object Day17 {
         File(textFile).readText()
             .let { dropRocks(it, 2022L) }
 
-    // 1549243930622 is too low
     fun scenarioTwo(textFile: String) =
         File(textFile).readText()
             .let { dropRocks(it, 1000000000000L) }

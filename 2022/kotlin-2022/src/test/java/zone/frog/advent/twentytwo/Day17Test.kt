@@ -10,12 +10,12 @@ class Day17Test {
 
     @Test
     internal fun testOne() {
-//        assertEquals(3068, scenarioOne("../input/day17-test.txt"))
+        assertEquals(3068, scenarioOne("../input/day17-test.txt"))
     }
 
     @Test
     internal fun testScenarioOne() {
-//        assertEquals(3065, scenarioOne("../input/day17.txt"))
+        assertEquals(3065, scenarioOne("../input/day17.txt"))
     }
 
     @Test
