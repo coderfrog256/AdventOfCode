@@ -2,7 +2,6 @@ package zone.frog.advent.twentytwo
 
 import java.io.File
 import java.lang.IllegalArgumentException
-import java.util.concurrent.CompletableFuture
 
 object Day19 {
     private const val TIME_LIMIT = 24
@@ -42,6 +41,15 @@ object Day19 {
                 else -> throw IllegalArgumentException(robo)
             }
         }
+
+        fun applyRobots(currentRobots: Resources): Resources {
+            return copy(
+                ore = ore + currentRobots.ore,
+                clay = clay + currentRobots.clay,
+                obsidian = obsidian + currentRobots.obsidian,
+                geode = geode + currentRobots.geode
+            )
+        }
     }
 
     private fun parseRobots(line: String): Pair<Int, Map<String, Robot>> {
@@ -65,97 +73,82 @@ object Day19 {
         val clayPrice = robotPrices["clay"]!!
         val orePrice = robotPrices["ore"]!!
 
-        val oreNeeded = clayPrice.oreCost
-//        val oreNeeded = robotPrices.maxOf { it.value.oreCost }
-        val clayNeeded = obsidianPrice.clayCost
-//        val clayNeeded = robotPrices.maxOf { it.value.clayCost }
-        val obsidianNeeded = geodePrice.obsidianCost
-//        val obsidianNeeded = robotPrices.maxOf { it.value.obsidianCost }
+        var currentResources = initialResources
+        var currentRobots = initialRobots
 
-        var currentMax = -1
-        fun evaluateOptions(
-            timeRemaining: Int,
-            robots: Resources,
-            resources: Resources,
-            nextRobot: String?
-        ): CompletableFuture<Int> {
-            if (timeRemaining == 0) {
-                if(currentMax < resources.geode) {
-                    currentMax = resources.geode
-                    println("$idNumber - New max found: $currentMax")
-                }
-                return CompletableFuture.completedFuture(resources.geode)
+        fun excessOre(price: Robot, currentResources: Resources, currentRobots: Resources): Int? {
+            val secondaryResourceToCheck = when (price) {
+                geodePrice -> geodePrice.obsidianCost to Resources::obsidian
+                obsidianPrice -> obsidianPrice.clayCost to Resources::clay
+                clayPrice -> clayPrice.oreCost to Resources::ore
+                else -> throw IllegalArgumentException(price.name)
             }
-            val newRobotCount =
-                nextRobot?.let { robo -> robots.addRobot(robo) } ?: robots
 
-            val newResources = resources.copy(
-                ore = resources.ore + robots.ore,
-                clay = resources.clay + robots.clay,
-                obsidian = resources.obsidian + robots.obsidian,
-                geode = resources.geode + robots.geode
-            )
-            val futures = mutableListOf<CompletableFuture<CompletableFuture<Int>>>()
-            if (geodePrice.canProduceRobot(newResources)) {
-                futures.add(CompletableFuture.supplyAsync {
-                    evaluateOptions(
-                        timeRemaining - 1,
-                        newRobotCount,
-                        geodePrice.consumeResources(newResources),
-                        geodePrice.name
-                    )
-                })
-            }
-            if (obsidianPrice.canProduceRobot(newResources) && robots.obsidian < obsidianNeeded) {
-                futures.add(CompletableFuture.supplyAsync {
-                    evaluateOptions(
-                        timeRemaining - 1,
-                        newRobotCount,
-                        obsidianPrice.consumeResources(newResources),
-                        obsidianPrice.name
-                    )
-                })
-            }
-            if (clayPrice.canProduceRobot(newResources) && robots.clay < clayNeeded) {
-                futures.add(CompletableFuture.supplyAsync {
-                    evaluateOptions(
-                        timeRemaining - 1,
-                        newRobotCount,
-                        clayPrice.consumeResources(newResources),
-                        clayPrice.name
-                    )
-                })
-            }
-            if (orePrice.canProduceRobot(newResources) && robots.ore < oreNeeded) {
-                futures.add(CompletableFuture.supplyAsync {
-                    evaluateOptions(
-                        timeRemaining - 1,
-                        newRobotCount,
-                        orePrice.consumeResources(newResources),
-                        orePrice.name
-                    )
-                })
-            }
-            futures.add(CompletableFuture.supplyAsync {
-                evaluateOptions(
-                    timeRemaining - 1,
-                    newRobotCount,
-                    newResources,
-                    null
-                )
-            })
-            return CompletableFuture.allOf(*futures.toTypedArray())
-                .thenApply { futures.map { it.join() } }
-                .thenApply { it.maxOfOrNull { it.join() } }
+            val secondaryResourceNeeded = secondaryResourceToCheck.first
+            val secondaryResourceAvailable = secondaryResourceToCheck.second(currentResources)
+            val secondaryResourceRate = secondaryResourceToCheck.second(currentRobots)
+
+            if (secondaryResourceRate < 1) return null
+            val turnsNeededForSecondary = (secondaryResourceNeeded - secondaryResourceAvailable) / secondaryResourceRate
+            val oreAvailableAtBuildTime =
+                (price.oreCost - currentResources.ore) + (currentRobots.ore * turnsNeededForSecondary)
+
+            return oreAvailableAtBuildTime - price.oreCost
         }
 
-        val max = evaluateOptions(TIME_LIMIT, initialRobots, initialResources, null).join()
+        val FUCK = ::excessOre
+
+        var timeLeft = TIME_LIMIT
+        var newRobot: Robot? = null
+        while (timeLeft-- > 0) {
+            currentResources = currentResources.applyRobots(currentRobots)
+            currentRobots = newRobot?.name?.let { currentRobots.addRobot(it) } ?: currentRobots
+            newRobot = null
+            val oreAvailable = currentResources.ore
+
+            if (geodePrice.canProduceRobot(currentResources)) {
+                newRobot = geodePrice
+                currentResources = geodePrice.consumeResources(currentResources)
+                continue
+            }
+            val excessGeodeOreIfObsidianAdded = excessOre(geodePrice, currentResources, currentRobots)
+            if (obsidianPrice.canProduceRobot(currentResources)
+                && (excessGeodeOreIfObsidianAdded == null || oreAvailable > excessGeodeOreIfObsidianAdded)
+            ) {
+                newRobot = obsidianPrice
+                currentResources = obsidianPrice.consumeResources(currentResources)
+                continue
+            }
+            val excessGeodeOreIfClayAdded = excessOre(geodePrice, currentResources, currentRobots)
+            val excessObsidianOreIfClayAdded = excessOre(obsidianPrice, currentResources, currentRobots)
+            if (clayPrice.canProduceRobot(currentResources)
+                && (excessGeodeOreIfClayAdded == null || oreAvailable > excessGeodeOreIfClayAdded)
+                && (excessObsidianOreIfClayAdded == null || oreAvailable > excessObsidianOreIfClayAdded)
+            ) {
+                newRobot = clayPrice
+                currentResources = clayPrice.consumeResources(currentResources)
+                continue
+            }
+            val excessGeodeOreIfOreAdded = excessOre(geodePrice, currentResources, currentRobots)
+            val excessObsidianOreIfOreAdded = excessOre(obsidianPrice, currentResources, currentRobots)
+            val excessClayOreIfOreAdded = excessOre(clayPrice, currentResources, currentRobots)
+            if (obsidianPrice.canProduceRobot(currentResources)
+                && (excessGeodeOreIfOreAdded == null || oreAvailable > excessGeodeOreIfOreAdded)
+                && (excessObsidianOreIfOreAdded == null || oreAvailable > excessObsidianOreIfOreAdded)
+                && (excessClayOreIfOreAdded == null || oreAvailable > excessClayOreIfOreAdded)
+            ) {
+                newRobot = orePrice
+                currentResources = orePrice.consumeResources(currentResources)
+                continue
+            }
+        }
+        val max = currentResources.geode
         return (idNumber * max)
             .also { println("Blueprint $idNumber done. Max=$max") }
     }
 
     fun scenarioOne(textFile: String) =
-        File(textFile).readLines()//.parallelStream()
+        File(textFile).readLines()
             .map { parseRobots(it) }
             .toList()
             .sumOf { getQualityNumber(it.first, it.second) }
