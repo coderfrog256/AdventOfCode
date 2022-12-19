@@ -76,70 +76,65 @@ object Day19 {
         var currentResources = initialResources
         var currentRobots = initialRobots
 
-        fun excessOre(price: Robot, currentResources: Resources, currentRobots: Resources): Int? {
+        fun turnsToBuild(price: Robot, currentResources: Resources, currentRobots: Resources): Int {
             val secondaryResourceToCheck = when (price) {
                 geodePrice -> geodePrice.obsidianCost to Resources::obsidian
                 obsidianPrice -> obsidianPrice.clayCost to Resources::clay
                 clayPrice -> clayPrice.oreCost to Resources::ore
+                orePrice -> orePrice.oreCost to Resources::ore
                 else -> throw IllegalArgumentException(price.name)
             }
+            val oreNeeded = price.oreCost
+            val oreAvailable = currentResources.ore
+            val oreRate = currentRobots.ore
+
+            val turnsToRequiredOre = (oreNeeded - oreAvailable) / oreRate
 
             val secondaryResourceNeeded = secondaryResourceToCheck.first
             val secondaryResourceAvailable = secondaryResourceToCheck.second(currentResources)
             val secondaryResourceRate = secondaryResourceToCheck.second(currentRobots)
 
-            if (secondaryResourceRate < 1) return null
-            val turnsNeededForSecondary = (secondaryResourceNeeded - secondaryResourceAvailable) / secondaryResourceRate
-            val oreAvailableAtBuildTime =
-                (price.oreCost - currentResources.ore) + (currentRobots.ore * turnsNeededForSecondary)
-
-            return oreAvailableAtBuildTime - price.oreCost
+            if (secondaryResourceRate < 1) return Int.MAX_VALUE
+            val turnsToRequiredSecondary = (secondaryResourceNeeded - secondaryResourceAvailable) / secondaryResourceRate
+            return maxOf(turnsToRequiredSecondary, turnsToRequiredOre)
         }
 
-        val FUCK = ::excessOre
+        fun bestInvestment(currentResources: Resources, currentRobots: Resources): Robot? {
+            if(geodePrice.canProduceRobot(currentResources)) {
+                return geodePrice
+            }
+            if(obsidianPrice.canProduceRobot(currentResources)) {
+                val robotsWithObsidian = currentResources.addRobot(obsidianPrice.name)
+                val resourcesWithObsidian = obsidianPrice.consumeResources(currentResources.applyRobots(currentResources))
+                if(turnsToBuild(geodePrice, resourcesWithObsidian, robotsWithObsidian) < turnsToBuild(geodePrice, currentResources.applyRobots(currentRobots), currentRobots)) {
+                    return obsidianPrice
+                }
+            }
+            if(clayPrice.canProduceRobot(currentResources)) {
+                val robotsWithClay = currentResources.addRobot(clayPrice.name)
+                val resourcesWithClay = clayPrice.consumeResources(currentResources.applyRobots(currentResources))
+                if(turnsToBuild(obsidianPrice, resourcesWithClay, robotsWithClay) < turnsToBuild(obsidianPrice, currentResources.applyRobots(currentRobots), currentRobots)) {
+                    return clayPrice
+                }
+            }
+            if(orePrice.canProduceRobot(currentResources)) {
+                val robotsWithOre = currentResources.addRobot(orePrice.name)
+                val resourcesWithOre = orePrice.consumeResources(currentResources.applyRobots(currentResources))
+                if(turnsToBuild(clayPrice, resourcesWithOre, robotsWithOre) < turnsToBuild(clayPrice, currentResources.applyRobots(currentRobots), currentRobots)) {
+                    return orePrice
+                }
+            }
+            return null
+        }
 
         var timeLeft = TIME_LIMIT
         var newRobot: Robot? = null
         while (timeLeft-- > 0) {
             currentResources = currentResources.applyRobots(currentRobots)
             currentRobots = newRobot?.name?.let { currentRobots.addRobot(it) } ?: currentRobots
-            newRobot = null
-            val oreAvailable = currentResources.ore
-
-            if (geodePrice.canProduceRobot(currentResources)) {
-                newRobot = geodePrice
-                currentResources = geodePrice.consumeResources(currentResources)
-                continue
-            }
-            val excessGeodeOreIfObsidianAdded = excessOre(geodePrice, currentResources, currentRobots)
-            if (obsidianPrice.canProduceRobot(currentResources)
-                && (excessGeodeOreIfObsidianAdded == null || oreAvailable > excessGeodeOreIfObsidianAdded)
-            ) {
-                newRobot = obsidianPrice
-                currentResources = obsidianPrice.consumeResources(currentResources)
-                continue
-            }
-            val excessGeodeOreIfClayAdded = excessOre(geodePrice, currentResources, currentRobots)
-            val excessObsidianOreIfClayAdded = excessOre(obsidianPrice, currentResources, currentRobots)
-            if (clayPrice.canProduceRobot(currentResources)
-                && (excessGeodeOreIfClayAdded == null || oreAvailable > excessGeodeOreIfClayAdded)
-                && (excessObsidianOreIfClayAdded == null || oreAvailable > excessObsidianOreIfClayAdded)
-            ) {
-                newRobot = clayPrice
-                currentResources = clayPrice.consumeResources(currentResources)
-                continue
-            }
-            val excessGeodeOreIfOreAdded = excessOre(geodePrice, currentResources, currentRobots)
-            val excessObsidianOreIfOreAdded = excessOre(obsidianPrice, currentResources, currentRobots)
-            val excessClayOreIfOreAdded = excessOre(clayPrice, currentResources, currentRobots)
-            if (obsidianPrice.canProduceRobot(currentResources)
-                && (excessGeodeOreIfOreAdded == null || oreAvailable > excessGeodeOreIfOreAdded)
-                && (excessObsidianOreIfOreAdded == null || oreAvailable > excessObsidianOreIfOreAdded)
-                && (excessClayOreIfOreAdded == null || oreAvailable > excessClayOreIfOreAdded)
-            ) {
-                newRobot = orePrice
-                currentResources = orePrice.consumeResources(currentResources)
-                continue
+            newRobot = bestInvestment(currentResources, currentRobots)
+            if(newRobot != null) {
+                currentResources = newRobot.consumeResources(currentResources)
             }
         }
         val max = currentResources.geode
