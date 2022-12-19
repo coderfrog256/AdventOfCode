@@ -30,12 +30,13 @@ object Day18 {
                 (0..cubes.maxOf { it.y })
                     .map {
                         (0..cubes.maxOf { it.z })
-                            .map { null }.toMutableList()
+                            .map { null }
+                            .toMutableList()
                     }
             }
         cubes.forEach { cubeSpace[it.x][it.y][it.z] = it }
 
-        //Look at the cubes six ways, sum up the non-obscured edges.
+        //Start with six visible sides per cube. How many are obscured by a neighbor?
         var sides = 0
         for (x in cubeSpace.indices) {
             for (y in cubeSpace[x].indices) {
@@ -59,7 +60,7 @@ object Day18 {
         val maxZ = cubes.maxOf { it.z } + 1
 
         // Build a set of all air cubes (those not in input).
-        // Start with the first cube (guaranteed to be air as it's -1 for all dimensions) and expand everything.
+        // Start with the first cube (guaranteed to be air as it's min-1 for all dimensions) and expand everything.
         val airCubes = mutableSetOf<Cube>()
         val cubesToExpand = ArrayDeque<Cube>()
         cubesToExpand += Cube(minX, minY, minZ)
