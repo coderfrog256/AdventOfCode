@@ -47,79 +47,65 @@ object Day20 {
         }
 
         fun shift(num: IdentityEqualLong) {
-            var moving = head
+            // Exit early if nothign to move
+            if (num.long == 0L) {
+                return
+            }
+
             // Find our node
+            var moving = head
             while (moving.data != num) {
                 moving = moving.next
             }
-            if (num.long > 0) {
-                // Detach our node
-                moving.last.next = moving.next
-                moving.next.last = moving.last
-                if(moving == head) {
-                    head = moving.next
-                }
 
-                // Build a jumpTable of remaining nodes. This lets use modulo to pick the node.
-                val jumpTable = ArrayList<Node>(size)
-                var iter = moving.last
-                do {
-                    iter = iter.next
-                    if(!jumpTable.contains(iter)) {
-                        jumpTable.add(iter)
-                    }
-                } while(iter != moving.last)
-                iter = jumpTable[((num.long-1) % jumpTable.size).toInt()]
-
-                // Found it. Reattach our node.
-                moving.next = iter.next
-                iter.next.last = moving
-                iter.next = moving
-                moving.last = iter
-            } else if (num.long < 0) {
-                // Detach our node
-                moving.last.next = moving.next
-                moving.next.last = moving.last
-                if(moving == head) {
-                    head = moving.next
-                }
-
-                // Build a jumpTable of remaining nodes. This lets use modulo to pick the node.
-                val jumpTable = ArrayList<Node>(size)
-                var iter = moving.last
-                do {
-                    iter = iter.next
-                    if(!jumpTable.contains(iter)) {
-                        jumpTable.add(iter)
-                    }
-                } while(iter != moving.last)
-                iter = jumpTable[(jumpTable.size - (abs(num.long) % jumpTable.size)).toInt()]
-
-                // Found it. Reattach our node.
-                moving.last = iter.last
-                iter.last.next = moving
-                iter.last = moving
-                moving.next = iter
+            // Detach our node
+            moving.last.next = moving.next
+            moving.next.last = moving.last
+            if (moving == head) {
+                head = moving.next
             }
+
+            // Build a jumpTable of remaining nodes. This lets use modulo to pick the node.
+            val jumpTable = ArrayList<Node>(size)
+            var iter = moving.last
+            do {
+                iter = iter.next
+                if (!jumpTable.contains(iter)) {
+                    jumpTable.add(iter)
+                }
+            } while (iter != moving.last)
+
+            // Jump to the right node.
+            iter = if (num.long > 0) {
+                jumpTable[((num.long - 1) % jumpTable.size).toInt()]
+            } else {
+                jumpTable[(jumpTable.size - (abs(num.long) % jumpTable.size)).toInt() - 1]
+            }
+
+            // Reattach our node.
+            moving.next = iter.next
+            iter.next.last = moving
+            iter.next = moving
+            moving.last = iter
         }
 
         override fun toString(): String {
-            if(!this::head.isInitialized) return "EMPTY, LOL"
+            if (!this::head.isInitialized) return "EMPTY, LOL"
             val out = StringBuilder()
             var iter = head
             do {
                 out.append(iter.data).append(", ")
                 iter = iter.next
-            } while(iter != head)
+            } while (iter != head)
             return out.toString()
         }
 
         operator fun get(index: Int): Long {
-            if(!this::head.isInitialized || index < 0) throw IllegalArgumentException(index.toString())
+            if (!this::head.isInitialized || index < 0) throw IllegalArgumentException(index.toString())
 
             // Find the magic starting point "0"
             var iter = head
-            while(iter.data.long != 0L) {
+            while (iter.data.long != 0L) {
                 iter = iter.next
             }
 
@@ -128,11 +114,11 @@ object Day20 {
             var toAdvance = iter
             do {
                 toAdvance = toAdvance.next
-                if(!jumpTable.contains(toAdvance)) {
+                if (!jumpTable.contains(toAdvance)) {
                     jumpTable.add(toAdvance)
                 }
-            } while(toAdvance != iter)
-            toAdvance = jumpTable[(jumpTable.indexOf(iter)+index) % jumpTable.size]
+            } while (toAdvance != iter)
+            toAdvance = jumpTable[(jumpTable.indexOf(iter) + index) % jumpTable.size]
             return toAdvance.data.long
         }
     }
