@@ -62,7 +62,7 @@ object Day19 {
     }
 
     data class PurchaseChoice(val timeLeft: Int, val resources: Resources, val robots: Resources) {
-        fun getNextChoices(robotOptions: Map<RobotPrice, Pair<Int, KProperty1<Resources, Int>>>): List<PurchaseChoice> {
+        fun getNextChoices(robotOptions: Map<RobotPrice, Pair<Int, (Resources) -> Int>>): List<PurchaseChoice> {
             val choices = mutableListOf(PurchaseChoice(timeLeft - 1, resources.applyRobots(robots), robots))
             robotOptions.forEach { (robot, requirements) ->
                 val (max, getter) = requirements
