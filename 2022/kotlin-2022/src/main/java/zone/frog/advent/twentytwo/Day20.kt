@@ -27,22 +27,20 @@ object Day20 {
         }
 
         private lateinit var head: Node
-        private lateinit var tail: Node
         private var size: Int = 0
 
         fun add(data: IdentityEqualLong) {
             ++size
+            val newNode = Node(data)
             if (!this::head.isInitialized) {
-                head = Node(data)
-                tail = head
-                tail.next = head
-                head.last = tail
+                head = newNode
+                head.last = head
+                head.next = head
             } else {
-                tail.next = Node(data)
-                tail.next.last = tail
-                tail = tail.next
-                tail.next = head
-                head.last = tail
+                newNode.last = head.last
+                newNode.next = head
+                head.last.next = newNode
+                head.last = newNode
             }
         }
 
