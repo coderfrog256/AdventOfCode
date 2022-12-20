@@ -2,7 +2,6 @@ package zone.frog.advent.twentytwo
 
 import java.io.File
 import java.lang.IllegalArgumentException
-import kotlin.reflect.KProperty1
 
 object Day19 {
     enum class Resource {
@@ -62,14 +61,31 @@ object Day19 {
     }
 
     data class PurchaseChoice(val timeLeft: Int, val resources: Resources, val robots: Resources) {
-        fun getNextChoices(robotOptions: Map<RobotPrice, Pair<Int, (Resources) -> Int>>): List<PurchaseChoice> {
-            val choices = mutableListOf(PurchaseChoice(timeLeft - 1, resources.applyRobots(robots), robots))
-            robotOptions.forEach { (robot, requirements) ->
+        private fun maxPossibleGeodes(): Int {
+            return resources.geode + (timeLeft * (robots.geode + timeLeft))
+        }
+
+        fun getNextChoices(currentMax: Int, robotOptions: Map<RobotPrice, Pair<Int, (Resources) -> Int>>): List<PurchaseChoice> {
+            val choices = mutableListOf<PurchaseChoice>()
+            val goodOptions = if(robotOptions.any { it.key.resource == Resource.Geode && resources.canAffordRobot(it.key) }) {
+                robotOptions.filter { it.key.resource == Resource.Geode }
+            } else {
+                val doNothing = PurchaseChoice(timeLeft - 1, resources.applyRobots(robots), robots)
+                if(doNothing.maxPossibleGeodes() > currentMax) {
+                    choices += doNothing
+                }
+                robotOptions
+            }
+
+            goodOptions.forEach { (robot, requirements) ->
                 val (max, getter) = requirements
                 if (resources.canAffordRobot(robot) && getter(resources) < max) {
                     val nextResources = resources.buyRobot(robot).applyRobots(robots)
                     val nextRobots = robots.addRobot(robot)
-                    choices += PurchaseChoice(timeLeft - 1, nextResources, nextRobots)
+                    val choice = PurchaseChoice(timeLeft - 1, nextResources, nextRobots)
+                    if(choice.maxPossibleGeodes() > currentMax) {
+                        choices += choice
+                    }
                 }
             }
             return choices
@@ -116,7 +132,7 @@ object Day19 {
                     timer = System.currentTimeMillis()
                 }
             } else {
-                workStack += work.getNextChoices(robotOptions)
+                workStack += work.getNextChoices(max, robotOptions)
             }
         }
         return (if (includeIdNumberInScore) (idNumber * max) else max)
