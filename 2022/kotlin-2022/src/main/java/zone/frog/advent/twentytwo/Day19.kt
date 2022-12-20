@@ -4,28 +4,39 @@ import java.io.File
 import java.lang.IllegalArgumentException
 
 object Day19 {
-    data class Robot(val name: String, val oreCost: Int, val clayCost: Int, val obsidianCost: Int) {
-        fun canProduceRobot(resources: Resources): Boolean {
-            return resources.ore >= oreCost && resources.clay >= clayCost && resources.obsidian >= obsidianCost
-        }
+    enum class Resource {
+        Ore,
+        Clay,
+        Obsidian,
+        Geode,
+    }
 
-        fun consumeResources(resources: Resources): Resources {
-            return resources.copy(
-                ore = resources.ore - oreCost,
-                clay = resources.clay - clayCost,
-                obsidian = resources.obsidian - obsidianCost
-            )
-        }
+    data class RobotPrice(val resource: Resource, val oreCost: Int, val clayCost: Int, val obsidianCost: Int)
+
+    private fun parsePrices(line: String): Pair<Int, Map<Resource, RobotPrice>> {
+        val (lineNum, oreOre, clayOre, obsidianOre, obsidianClay, geodeOre, geodeObsidian) =
+            Regex("Blueprint (\\d+): Each ore robot costs (\\d+) ore. Each clay robot costs (\\d+) ore. Each obsidian robot costs (\\d+) ore and (\\d+) clay. Each geode robot costs (\\d+) ore and (\\d+) obsidian.")
+                .matchEntire(line)?.destructured
+                ?: throw IllegalArgumentException(line)
+        return lineNum.toInt() to listOf(
+            RobotPrice(Resource.Ore, oreOre.toInt(), 0, 0),
+            RobotPrice(Resource.Clay, clayOre.toInt(), 0, 0),
+            RobotPrice(Resource.Obsidian, obsidianOre.toInt(), obsidianClay.toInt(), 0),
+            RobotPrice(Resource.Geode, geodeOre.toInt(), 0, geodeObsidian.toInt()),
+        ).associateBy { it.resource }
     }
 
     data class Resources(val ore: Int, val clay: Int, val obsidian: Int, val geode: Int) {
-        fun addRobot(robo: String): Resources {
-            return when (robo) {
-                "ore" -> copy(ore = ore + 1)
-                "clay" -> copy(clay = clay + 1)
-                "obsidian" -> copy(obsidian = obsidian + 1)
-                "geode" -> copy(geode = geode + 1)
-                else -> throw IllegalArgumentException(robo)
+        fun canAffordRobot(price: RobotPrice): Boolean {
+            return ore >= price.oreCost && clay >= price.clayCost && obsidian >= price.obsidianCost
+        }
+
+        fun addRobot(price: RobotPrice): Resources {
+            return when (price.resource) {
+                Resource.Ore -> copy(ore = ore + 1)
+                Resource.Clay -> copy(clay = clay + 1)
+                Resource.Obsidian -> copy(obsidian = obsidian + 1)
+                Resource.Geode -> copy(geode = geode + 1)
             }
         }
 
@@ -37,61 +48,42 @@ object Day19 {
                 geode = geode + currentRobots.geode
             )
         }
-    }
 
-    private fun parseRobots(line: String): Pair<Int, Map<String, Robot>> {
-        val (lineNum, oreOre, clayOre, obsidianOre, obsidianClay, geodeOre, geodeObsidian) = Regex("Blueprint (\\d+): Each ore robot costs (\\d+) ore. Each clay robot costs (\\d+) ore. Each obsidian robot costs (\\d+) ore and (\\d+) clay. Each geode robot costs (\\d+) ore and (\\d+) obsidian.")
-            .matchEntire(line)?.destructured
-            ?: throw IllegalArgumentException(line)
-        return lineNum.toInt() to listOf(
-            Robot("ore", oreOre.toInt(), 0, 0),
-            Robot("clay", clayOre.toInt(), 0, 0),
-            Robot("obsidian", obsidianOre.toInt(), obsidianClay.toInt(), 0),
-            Robot("geode", geodeOre.toInt(), 0, geodeObsidian.toInt()),
-        ).associateBy { it.name }
+        fun buyRobot(price: RobotPrice): Resources {
+            return copy(
+                ore = ore - price.oreCost,
+                clay = clay - price.clayCost,
+                obsidian = obsidian - price.obsidianCost
+            )
+        }
     }
 
     private fun getQualityNumber(
         timeLimit: Int,
         includeIdNumberInScore: Boolean,
         idNumber: Int,
-        robotPrices: Map<String, Robot>
+        robotPrices: Map<Resource, RobotPrice>
     ): Int {
         val initialRobots = Resources(1, 0, 0, 0)
         val initialResources = Resources(0, 0, 0, 0)
 
-        val geodePrice = robotPrices["geode"]!!
-        val obsidianPrice = robotPrices["obsidian"]!!
-        val clayPrice = robotPrices["clay"]!!
-        val orePrice = robotPrices["ore"]!!
-
-        // I have no clue why the +1 is needed, but whatever.
-        val maxOreNeeded = robotPrices.values.sumOf { it.oreCost }
-        val maxClayNeeded = robotPrices.values.maxOf { it.clayCost+1 }
-        val maxObsidianNeeded = robotPrices.values.maxOf { it.obsidianCost+1 }
+        val robotOptions = mapOf(
+            robotPrices[Resource.Ore]!! to (robotPrices.values.sumOf { it.oreCost } to Resources::ore),
+            robotPrices[Resource.Clay]!! to (robotPrices.values.maxOf { it.clayCost } to Resources::clay),
+            robotPrices[Resource.Obsidian]!! to (robotPrices.values.maxOf { it.obsidianCost } to Resources::obsidian),
+            robotPrices[Resource.Geode]!! to (Int.MAX_VALUE to Resources::geode),
+        )
 
         data class PurchaseChoices(val timeLeft: Int, val resources: Resources, val robots: Resources) {
             fun getNextChoices(): List<PurchaseChoices> {
                 val choices = mutableListOf(PurchaseChoices(timeLeft - 1, resources.applyRobots(robots), robots))
-                if (orePrice.canProduceRobot(resources) && resources.ore < maxOreNeeded) {
-                    val nextResources = orePrice.consumeResources(resources).applyRobots(robots)
-                    val nextRobots = robots.addRobot(orePrice.name)
-                    choices += PurchaseChoices(timeLeft - 1, nextResources, nextRobots)
-                }
-                if (clayPrice.canProduceRobot(resources) && resources.clay < maxClayNeeded) {
-                    val nextResources = clayPrice.consumeResources(resources).applyRobots(robots)
-                    val nextRobots = robots.addRobot(clayPrice.name)
-                    choices += PurchaseChoices(timeLeft - 1, nextResources, nextRobots)
-                }
-                if (obsidianPrice.canProduceRobot(resources) && resources.obsidian < maxObsidianNeeded) {
-                    val nextResources = obsidianPrice.consumeResources(resources).applyRobots(robots)
-                    val nextRobots = robots.addRobot(obsidianPrice.name)
-                    choices += PurchaseChoices(timeLeft - 1, nextResources, nextRobots)
-                }
-                if (geodePrice.canProduceRobot(resources)) {
-                    val nextResources = geodePrice.consumeResources(resources).applyRobots(robots)
-                    val nextRobots = robots.addRobot(geodePrice.name)
-                    choices += PurchaseChoices(timeLeft - 1, nextResources, nextRobots)
+                robotOptions.forEach { (robot, requirements) ->
+                    val (max, getter) = requirements
+                    if (resources.canAffordRobot(robot) && getter(resources) < max) {
+                        val nextResources = resources.buyRobot(robot).applyRobots(robots)
+                        val nextRobots = robots.addRobot(robot)
+                        choices += PurchaseChoices(timeLeft - 1, nextResources, nextRobots)
+                    }
                 }
                 return choices
             }
@@ -107,9 +99,17 @@ object Day19 {
             if (work.timeLeft == 0) {
                 if (work.resources.geode > max) {
                     max = work.resources.geode
-                    println("$idNumber - New Max $max, remaining ${workStack.size} (${workStack.maxOf { it.timeLeft }}, ${workStack.map { it.timeLeft }.average()})")
-                } else if(System.currentTimeMillis() - timer > 60_000) {
-                    println("$idNumber - max $max remaining ${workStack.size} (${workStack.maxOf { it.timeLeft }}, ${workStack.map { it.timeLeft }.average()})")
+                    println(
+                        "$idNumber - New Max $max, remaining ${workStack.size} (${workStack.maxOf { it.timeLeft }}, ${
+                            workStack.map { it.timeLeft }.average()
+                        })"
+                    )
+                } else if (System.currentTimeMillis() - timer > 60_000) {
+                    println(
+                        "$idNumber - max $max remaining ${workStack.size} (${workStack.maxOf { it.timeLeft }}, ${
+                            workStack.map { it.timeLeft }.average()
+                        })"
+                    )
                     timer = System.currentTimeMillis()
                 }
             } else {
@@ -122,14 +122,14 @@ object Day19 {
 
     fun scenarioOne(textFile: String) =
         File(textFile).readLines().parallelStream()
-            .map { parseRobots(it) }
+            .map { parsePrices(it) }
             .map { getQualityNumber(24, true, it.first, it.second) }
             .toList()
             .sum()
 
     fun scenarioTwo(textFile: String, blueprintsLeft: Int) =
         File(textFile).readLines().subList(0, blueprintsLeft).parallelStream()
-            .map { parseRobots(it) }
+            .map { parsePrices(it) }
             .map { getQualityNumber(32, false, it.first, it.second) }
             .toList()
             .fold(1) { acc, i -> acc * i }
