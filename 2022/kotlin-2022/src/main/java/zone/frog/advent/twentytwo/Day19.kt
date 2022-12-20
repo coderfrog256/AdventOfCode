@@ -4,8 +4,6 @@ import java.io.File
 import java.lang.IllegalArgumentException
 
 object Day19 {
-    private const val TIME_LIMIT = 24
-
     data class Robot(val name: String, val oreCost: Int, val clayCost: Int, val obsidianCost: Int) {
         fun canProduceRobot(resources: Resources): Boolean {
             return resources.ore >= oreCost && resources.clay >= clayCost && resources.obsidian >= obsidianCost
@@ -53,7 +51,12 @@ object Day19 {
         ).associateBy { it.name }
     }
 
-    private fun getQualityNumber(idNumber: Int, robotPrices: Map<String, Robot>): Int {
+    private fun getQualityNumber(
+        timeLimit: Int,
+        includeIdNumberInScore: Boolean,
+        idNumber: Int,
+        robotPrices: Map<String, Robot>
+    ): Int {
         val initialRobots = Resources(1, 0, 0, 0)
         val initialResources = Resources(0, 0, 0, 0)
 
@@ -63,59 +66,71 @@ object Day19 {
         val orePrice = robotPrices["ore"]!!
 
         // I have no clue why the +1 is needed, but whatever.
-        val maxOreNeeded = robotPrices.maxOf { it.value.oreCost+1 }
-        val maxClayNeeded = robotPrices.maxOf { it.value.clayCost+1 }
-        val maxObsidianNeeded = robotPrices.maxOf { it.value.obsidianCost+1 }
+        val maxOreNeeded = robotPrices.values.sumOf { it.oreCost }
+        val maxClayNeeded = robotPrices.values.maxOf { it.clayCost+1 }
+        val maxObsidianNeeded = robotPrices.values.maxOf { it.obsidianCost+1 }
 
-        data class PurchaseChoices(val timeLeft: Int, val resources: Resources, val robots: Resources){
+        data class PurchaseChoices(val timeLeft: Int, val resources: Resources, val robots: Resources) {
             fun getNextChoices(): List<PurchaseChoices> {
-                val choices = mutableListOf(PurchaseChoices(timeLeft-1, resources.applyRobots(robots), robots))
-                if(orePrice.canProduceRobot(resources) && resources.ore < maxOreNeeded) {
+                val choices = mutableListOf(PurchaseChoices(timeLeft - 1, resources.applyRobots(robots), robots))
+                if (orePrice.canProduceRobot(resources) && resources.ore < maxOreNeeded) {
                     val nextResources = orePrice.consumeResources(resources).applyRobots(robots)
                     val nextRobots = robots.addRobot(orePrice.name)
-                    choices += PurchaseChoices(timeLeft-1, nextResources, nextRobots)
+                    choices += PurchaseChoices(timeLeft - 1, nextResources, nextRobots)
                 }
-                if(clayPrice.canProduceRobot(resources) && resources.clay < maxClayNeeded) {
+                if (clayPrice.canProduceRobot(resources) && resources.clay < maxClayNeeded) {
                     val nextResources = clayPrice.consumeResources(resources).applyRobots(robots)
                     val nextRobots = robots.addRobot(clayPrice.name)
-                    choices += PurchaseChoices(timeLeft-1, nextResources, nextRobots)
+                    choices += PurchaseChoices(timeLeft - 1, nextResources, nextRobots)
                 }
-                if(obsidianPrice.canProduceRobot(resources) && resources.obsidian < maxObsidianNeeded) {
+                if (obsidianPrice.canProduceRobot(resources) && resources.obsidian < maxObsidianNeeded) {
                     val nextResources = obsidianPrice.consumeResources(resources).applyRobots(robots)
                     val nextRobots = robots.addRobot(obsidianPrice.name)
-                    choices += PurchaseChoices(timeLeft-1, nextResources, nextRobots)
+                    choices += PurchaseChoices(timeLeft - 1, nextResources, nextRobots)
                 }
-                if(geodePrice.canProduceRobot(resources)) {
+                if (geodePrice.canProduceRobot(resources)) {
                     val nextResources = geodePrice.consumeResources(resources).applyRobots(robots)
                     val nextRobots = robots.addRobot(geodePrice.name)
-                    choices += PurchaseChoices(timeLeft-1, nextResources, nextRobots)
+                    choices += PurchaseChoices(timeLeft - 1, nextResources, nextRobots)
                 }
                 return choices
             }
         }
 
         val workStack = ArrayDeque<PurchaseChoices>()
-        workStack += PurchaseChoices(TIME_LIMIT, initialResources, initialRobots)
+        workStack += PurchaseChoices(timeLimit, initialResources, initialRobots)
 
         var max = 0
-        while(workStack.isNotEmpty()) {
+        var timer = System.currentTimeMillis()
+        while (workStack.isNotEmpty()) {
             val work = workStack.removeLast()
-            if(work.timeLeft == 0) {
-                max = maxOf(max, work.resources.geode)
+            if (work.timeLeft == 0) {
+                if (work.resources.geode > max) {
+                    max = work.resources.geode
+                    println("$idNumber - New Max $max, remaining ${workStack.size} (${workStack.maxOf { it.timeLeft }}, ${workStack.map { it.timeLeft }.average()})")
+                } else if(System.currentTimeMillis() - timer > 60_000) {
+                    println("$idNumber - max $max remaining ${workStack.size} (${workStack.maxOf { it.timeLeft }}, ${workStack.map { it.timeLeft }.average()})")
+                    timer = System.currentTimeMillis()
+                }
             } else {
                 workStack += work.getNextChoices()
             }
         }
-        return (idNumber * max)
+        return (if (includeIdNumberInScore) (idNumber * max) else max)
             .also { println("Blueprint $idNumber done. Max=$max") }
     }
 
     fun scenarioOne(textFile: String) =
-        File(textFile).readLines()
+        File(textFile).readLines().parallelStream()
             .map { parseRobots(it) }
+            .map { getQualityNumber(24, true, it.first, it.second) }
             .toList()
-            .sumOf { getQualityNumber(it.first, it.second) }
+            .sum()
 
-    fun scenarioTwo(textFile: String) =
-        File(textFile)
+    fun scenarioTwo(textFile: String, blueprintsLeft: Int) =
+        File(textFile).readLines().subList(0, blueprintsLeft).parallelStream()
+            .map { parseRobots(it) }
+            .map { getQualityNumber(32, false, it.first, it.second) }
+            .toList()
+            .fold(1) { acc, i -> acc * i }
 }
