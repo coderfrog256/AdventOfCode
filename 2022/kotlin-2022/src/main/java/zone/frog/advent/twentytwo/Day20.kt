@@ -5,34 +5,36 @@ import java.lang.IllegalArgumentException
 import kotlin.collections.ArrayList
 
 object Day20 {
+    class FuckedUpInteger(val int: Int)
+
     //FUCK IT
     class CircularList {
-        class Node(val data: Int, var last: Node?, var next: Node?)
+        class Node(val data: FuckedUpInteger, var last: Node?, var next: Node?)
 
         var head: Node? = null
-        var tail: Node? = null
+        var tailOnlyForAdd: Node? = null
 
-        fun add(data: Int) {
+        fun add(data: FuckedUpInteger) {
             if (head == null) {
                 head = Node(data, null, null)
-                tail = head
+                tailOnlyForAdd = head
             } else {
-                tail!!.next = Node(data, tail, null)
-                tail = tail!!.next
+                tailOnlyForAdd!!.next = Node(data, tailOnlyForAdd, null)
+                tailOnlyForAdd = tailOnlyForAdd!!.next
             }
         }
 
         fun seal() {
-            tail!!.next = head
-            head!!.last = tail
+            tailOnlyForAdd!!.next = head
+            head!!.last = tailOnlyForAdd
         }
 
-        fun shift(num: Int) {
+        fun shift(num: FuckedUpInteger) {
             var moving = head!!
             while (moving.data != num) {
                 moving = moving.next!!
             }
-            if (num > 0) {
+            if (num.int > 0) {
                 moving.last!!.next = moving.next
                 moving.next!!.last = moving.last
                 if(moving == head) {
@@ -40,7 +42,7 @@ object Day20 {
                 }
 
                 var iter = moving
-                var remaining = num
+                var remaining = num.int
                 while (remaining-- > 0) {
                     iter = iter.next!!
                 }
@@ -48,7 +50,7 @@ object Day20 {
                 iter.next!!.last = moving
                 iter.next = moving
                 moving.last = iter
-            } else if (num < 0) {
+            } else if (num.int < 0) {
                 moving.last!!.next = moving.next
                 moving.next!!.last = moving.last
                 if(moving == head) {
@@ -56,7 +58,7 @@ object Day20 {
                 }
 
                 var iter = moving
-                var remaining = num
+                var remaining = num.int
                 while (remaining++ < 0) {
                     iter = iter.last!!
                 }
@@ -67,32 +69,34 @@ object Day20 {
             }
         }
 
-        fun toStringFake(): String {
-            if(head == null) return "EMPTY LOL"
-            val out = StringBuilder()
-            var iter = head
-            do {
-                out.append(iter!!.data).append(",")
-                iter = iter.next
-            } while(iter != head)
-            return out.toString()
-        }
-
         fun toList(): List<Int> {
             if(head == null) return emptyList()
             val out = ArrayList<Int>()
             var iter = head
             do {
-                out.add(iter!!.data)
+                out.add(iter!!.data.int)
                 iter = iter.next
             } while(iter != head)
             return out
         }
 
+        fun validateSanity(expectedContents: List<FuckedUpInteger>) {
+            var iter = head
+            val seen = mutableListOf<FuckedUpInteger>()
+            do {
+                assert(iter!!.last!!.next == iter)
+                assert(iter.next!!.last == iter)
+                seen.add(iter.data)
+                iter = iter.next
+            } while(iter != head)
+            assert(expectedContents.size == seen.size)
+            assert(seen.containsAll(expectedContents))
+        }
+
         operator fun get(index: Int): Int {
             if(head == null || index < 0) throw IllegalArgumentException(index.toString())
             var iter = head
-            while(iter!!.data != 0) {
+            while(iter!!.data.int != 0) {
                 iter = iter.next!!
             }
 
@@ -100,17 +104,22 @@ object Day20 {
             while(toAdvance-- > 0) {
                 iter = iter!!.next!!
             }
-            return iter!!.data
+            return iter!!.data.int
         }
     }
 
-    private fun buildShiftedString(text: List<String>): CircularList {
+    private fun buildShiftedString(text: List<String>, shiftCount: Int): CircularList {
+        val fuckedUpText = text.map { FuckedUpInteger(it.toInt()) }
+
         val list = CircularList()
-        text.forEach { list.add(it.toInt()) }
+        fuckedUpText.forEach { list.add(it) }
         list.seal()
-        for (num in text.map { it.toInt() }) {
-            list.shift(num)
+        repeat(shiftCount) {
+            for (num in fuckedUpText) {
+                list.shift(num)
+            }
         }
+        list.validateSanity(fuckedUpText)
         return list
     }
 
@@ -124,10 +133,12 @@ object Day20 {
     // Not -13279
     fun scenarioOne(textFile: String) =
         File(textFile).readLines()
-            .let { buildShiftedString(it) }
+            .let { buildShiftedString(it,) }
             .let { sumIndices(it) }
 
 
     fun scenarioTwo(textFile: String) =
         File(textFile)
+            .let { buildShiftedString(it,) }
+            .let { sumIndices(it) }
 }

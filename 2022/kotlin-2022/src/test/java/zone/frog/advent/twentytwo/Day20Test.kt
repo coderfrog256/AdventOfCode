@@ -13,7 +13,7 @@ class Day20Test {
 
     @Test
     internal fun testScenarioOne() {
-        println(scenarioOne("../input/day20.txt"))
+        assertEquals(14526, scenarioOne("../input/day20.txt"))
     }
 
     @Test
