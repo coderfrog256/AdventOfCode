@@ -3,20 +3,30 @@ package zone.frog.advent.twentytwo
 import java.io.File
 import java.lang.IllegalArgumentException
 
+
 object Day21 {
-    //TODO: name as property. Drop pair as name is right here.
+    private const val HUMAN_NAME = "humn"
+    private const val ROOT_NAME = "root"
+
     interface Monkey {
-        fun getName(): String
+        val name: String
         fun getValue(monkeyMap: Map<String, Monkey>): Long
         fun caresAboutHumans(monkeyMap: Map<String, Monkey>): Boolean
-        fun solveForValue(desiredValue: Long, monkeyMap: MutableMap<String, Monkey>): Long
+        fun solveForValue(desiredValue: Long, monkeyMap: Map<String, Monkey>): Long
     }
 
-    data class MathMonkey(private val name: String, val lhs: String, val operator: String, val rhs: String) : Monkey {
-        override fun getName(): String {
-            return name
-        }
+    data class ValueMonkey(override val name: String, val value: Long) : Monkey {
+        override fun getValue(monkeyMap: Map<String, Monkey>) = value
+        override fun caresAboutHumans(monkeyMap: Map<String, Monkey>) = name == HUMAN_NAME
+        override fun solveForValue(desiredValue: Long, monkeyMap: Map<String, Monkey>) = desiredValue
+    }
 
+    data class CalculatorMonkey(
+        override val name: String,
+        val lhs: String,
+        val operator: String,
+        val rhs: String
+    ) : Monkey {
         override fun getValue(monkeyMap: Map<String, Monkey>): Long {
             return when (operator) {
                 "+" -> monkeyMap[lhs]!!.getValue(monkeyMap) + monkeyMap[rhs]!!.getValue(monkeyMap)
@@ -31,8 +41,7 @@ object Day21 {
             return monkeyMap[lhs]!!.caresAboutHumans(monkeyMap) || monkeyMap[rhs]!!.caresAboutHumans(monkeyMap)
         }
 
-        //TODO: Unify this
-        override fun solveForValue(desiredValue: Long, monkeyMap: MutableMap<String, Monkey>): Long {
+        override fun solveForValue(desiredValue: Long, monkeyMap: Map<String, Monkey>): Long {
             return if (monkeyMap[lhs]!!.caresAboutHumans(monkeyMap)) {
                 val operand = monkeyMap[rhs]!!.getValue(monkeyMap)
                 monkeyMap[lhs]!!.solveForValue(
@@ -59,82 +68,30 @@ object Day21 {
         }
     }
 
-    data class ValueMonkey(private val name: String, val value: Long) : Monkey {
-        override fun getName(): String {
-            return name
-        }
+    private fun parseMonkeys(lines: List<String>) =
+        lines.map { line ->
+            val (name, job) = line.split(": ")
+            job.toLongOrNull()
+                ?.let { ValueMonkey(name, it) }
+                ?: job.split(" ").let { CalculatorMonkey(name, it[0], it[1], it[2]) }
+        }.associateBy { it.name }
 
-        override fun getValue(monkeyMap: Map<String, Monkey>): Long {
-            return value
-        }
-
-        override fun caresAboutHumans(monkeyMap: Map<String, Monkey>): Boolean {
-            return name == "humn"
-        }
-
-        override fun solveForValue(desiredValue: Long, monkeyMap: MutableMap<String, Monkey>): Long {
-            if(name == "humn") return desiredValue
-            return value
-        }
+    private fun getRootValue(lines: List<String>): Long {
+        val monkeyMap = parseMonkeys(lines)
+        return monkeyMap[ROOT_NAME]!!.getValue(monkeyMap)
     }
 
-    fun getRootValue(lines: List<String>): Long {
-        val monkeyMap = mutableMapOf<String, Monkey>()
-        val monkeys = lines
-            .map { it.split(": ") }
-            .map { it[0] to it[1] }
+    private fun getHumanValue(lines: List<String>): Long {
+        val monkeyMap = parseMonkeys(lines)
 
-        monkeys
-            .map { it.first to it.second.toLongOrNull() }
-            .filter { it.second != null }
-            .map { it.first to ValueMonkey(it.first, it.second!!) }
-            .forEach { monkeyMap += it }
+        val rootLhs = monkeyMap[(monkeyMap[ROOT_NAME] as CalculatorMonkey).lhs]!!
+        val rootRhs = monkeyMap[(monkeyMap[ROOT_NAME] as CalculatorMonkey).rhs]!!
 
-        monkeys
-            .filter { it.second.contains(" ") }
-            .map {
-                val math = it.second.split(" ")
-                it.first to MathMonkey(it.first, math[0], math[1], math[2])
-            }
-            .forEach { monkeyMap += it }
+        val dynamicOperand = if (rootLhs.caresAboutHumans(monkeyMap)) rootLhs else rootRhs
+        val staticOperand = if (dynamicOperand == rootLhs) rootRhs else rootLhs
 
-        return monkeyMap["root"]!!.getValue(monkeyMap)
-    }
-
-    fun getRootValuePartTwo(lines: List<String>): Long {
-        val monkeyMap = mutableMapOf<String, Monkey>()
-        val monkeys = lines
-            .map { it.split(": ") }
-            .map { it[0] to it[1] }
-
-        monkeys
-            .map { it.first to it.second.toLongOrNull() }
-            .filter { it.second != null }
-            .map { it.first to ValueMonkey(it.first, it.second!!) }
-            .forEach { monkeyMap += it }
-
-        monkeys
-            .filter { it.second.contains(" ") }
-            .map {
-                val math = it.second.split(" ")
-                it.first to MathMonkey(it.first, math[0], math[1], math[2])
-            }
-            .forEach { monkeyMap += it }
-
-        val rootLhs = (monkeyMap["root"] as MathMonkey).lhs
-        val rootRhs = (monkeyMap["root"] as MathMonkey).rhs
-        val desiredValue =
-            if (monkeyMap[rootLhs]!!.caresAboutHumans(monkeyMap)) monkeyMap[rootRhs]!!.getValue(monkeyMap)
-            else monkeyMap[rootLhs]!!.getValue(monkeyMap)
-
-        val humanValue =
-            if (monkeyMap[rootLhs]!!.caresAboutHumans(monkeyMap)) monkeyMap[rootLhs]!!.solveForValue(
-                desiredValue,
-                monkeyMap
-            )
-            else monkeyMap[rootRhs]!!.solveForValue(desiredValue, monkeyMap)
-
-        return humanValue
+        val desiredValue = staticOperand.getValue(monkeyMap)
+        return dynamicOperand.solveForValue(desiredValue, monkeyMap)
     }
 
     fun scenarioOne(textFile: String) =
@@ -143,5 +100,5 @@ object Day21 {
 
     fun scenarioTwo(textFile: String) =
         File(textFile).readLines()
-            .let { getRootValuePartTwo(it) }
+            .let { getHumanValue(it) }
 }
