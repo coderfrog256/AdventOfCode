@@ -283,8 +283,8 @@ object Day22 {
 
             // Top of 3 is bottom of 1
             sideAdjustments[3 to Direction.UP] = { (x, y) -> (1 to Direction.UP) to (x to cubeSideSize-1) }
-            // Bottom of 3 is top of 4
-            sideAdjustments[3 to Direction.DOWN] = { (x, y) -> (4 to Direction.DOWN) to (x to 0) }
+            // Bottom of 3 is top of 5
+            sideAdjustments[3 to Direction.DOWN] = { (x, y) -> (5 to Direction.DOWN) to (x to 0) }
             sideAdjustments[3 to Direction.LEFT] = { (x, y) -> (2 to Direction.LEFT) to (cubeSideSize - 1 to y) }
             sideAdjustments[3 to Direction.RIGHT] = { (x, y) -> (4 to Direction.RIGHT) to (0 to y) }
 
