@@ -5,7 +5,7 @@ import java.lang.IllegalArgumentException
 
 
 object Day22 {
-    //TODO: Grid class to deal with wraps better.
+    //TODO: 2D Grid class to deal with wraps better.
     enum class TileType {
         EMPTY,
         WALL
@@ -37,6 +37,8 @@ object Day22 {
 
     data class Instruction(val amount: Int, val spin: String)
 
+    data class CubeMap(val cubeSides: List<Pair<IntRange, IntRange>>, val grid: Map<IntPair, TileType>)
+
     fun parseMapAndDirections(text: List<String>): Pair<Map<IntPair, TileType>, List<Instruction>> {
         val grid = mutableMapOf<IntPair, TileType>()
         for (y in 0 until text.size - 2) {
@@ -64,7 +66,7 @@ object Day22 {
     private fun parseMapCubeAndDirections(
         text: List<String>,
         cubeSideSize: Int
-    ): Pair<Map<IntPair, TileType>, List<Instruction>> {
+    ): Pair<CubeMap, MutableList<Instruction>> {
         val grid = mutableMapOf<IntPair, TileType>()
         for (y in 0 until text.size - 2) {
             for (x in 0 until text[y].length) {
@@ -75,8 +77,8 @@ object Day22 {
                 }
             }
         }
-        //Determine ranges for each side.
-        var sides = mutableListOf<Pair<IntRange, IntRange>>()
+        //Determine ranges for each side. (With a dummy to keep our side numbers in sync with the prompt.)
+        var sides = mutableListOf<Pair<IntRange, IntRange>>(0..0 to 0..0)
         var i = 1
         while (i < grid.maxOf { it.key.second }) {
             val line = grid.filter { it.key.second == i }
@@ -84,7 +86,7 @@ object Day22 {
             val lineEnd = line.maxOf { it.key.first }
 
             for (j in 0..(lineEnd - lineStart) / cubeSideSize) {
-                sides += (lineStart + (cubeSideSize*j)) until (lineStart + (cubeSideSize * (j + 1))) to i..i + (cubeSideSize - 1)
+                sides += (lineStart + (cubeSideSize * j)) until (lineStart + (cubeSideSize * (j + 1))) to i..i + (cubeSideSize - 1)
             }
             i += cubeSideSize
         }
@@ -103,7 +105,7 @@ object Day22 {
             i += match.value.length
             instructions += Instruction(match.groupValues[1].toInt(), match.groupValues[2])
         }
-        return grid to instructions
+        return CubeMap(sides, grid) to instructions
     }
 
     private fun step(
@@ -163,6 +165,127 @@ object Day22 {
         return (1000 * playerPosition.second) + (4 * playerPosition.first) + playerDirection.answerValue
     }
 
+    private fun stepWithinSide(
+        playerPosition: IntPair,
+        newPosition: IntPair,
+        side: Pair<IntRange, IntRange>,
+        grid: Map<IntPair, TileType>,
+    ): IntPair {
+        val resolvedPosition = newPosition.first + side.first.first to newPosition.second+side.second.first
+        return when (grid[resolvedPosition]) {
+            null -> throw IllegalArgumentException("Position not in range! $newPosition")
+            TileType.EMPTY -> newPosition
+            TileType.WALL -> playerPosition
+        }
+    }
+
+    private fun getCoordinateValueOnCube(cubeMap: CubeMap, instructions: List<Instruction>, cubeSideSize: Int): Int {
+        val grid = cubeMap.grid
+        val sides = cubeMap.cubeSides
+
+        // Side+Direction -> New Side after making the move.
+        val sideAdjustments = mutableMapOf<Pair<Int, Direction>, (IntPair) -> Pair<Pair<Int, Direction>, IntPair>>()
+        // TODO: I'm sure you can figure out a formula for this. For now fuck it.
+        // Note that the x and y are offsets from start within the range, NOT the coordinates from part 1.
+        // This means 0-indexed.
+        if (sides[1].first.count() == 4) {
+            // Top of 1 is top of 2, transpose x
+            sideAdjustments[1 to Direction.UP] = { (x, y) -> 2 to (cubeSideSize - 1 - x to 0) }
+            // Down of 1 is just the top of 4
+            sideAdjustments[1 to Direction.DOWN] = { (x, y) -> 4 to (x to 0) }
+            // Left of 1 is top of 3
+            sideAdjustments[1 to Direction.LEFT] = { (x, y) -> 3 to (y to 0) }
+            // Right of 1 is right-side of 6
+            sideAdjustments[1 to Direction.RIGHT] = { (x, y) -> 6 to (cubeSideSize - 1 to cubeSideSize - 1 - y) }
+
+            // Top of 2 is top of 1, transpose x
+            sideAdjustments[2 to Direction.UP] = { (x, y) -> 1 to (cubeSideSize - 1 - x to 0) }
+            // Down of 2 is bottom of 5
+            sideAdjustments[2 to Direction.DOWN] = { (x, y) -> 5 to (cubeSideSize - 1 - x to cubeSideSize - 1) }
+            // Left of 2 is bottom of 6
+            sideAdjustments[2 to Direction.LEFT] = { (x, y) -> 6 to (cubeSideSize - 1 - y to cubeSideSize - 1) }
+            // Right of 2 is left of 3
+            sideAdjustments[2 to Direction.RIGHT] = { (x, y) -> 3 to (0 to y) }
+
+            // Up of 3 is left of 1
+            sideAdjustments[3 to Direction.UP] = { (x, y) -> 1 to (0 to x) }
+            // Down of 3 is left of 5
+            sideAdjustments[3 to Direction.DOWN] = { (x, y) -> 5 to (0 to cubeSideSize - 1 - x) }
+            // Left of 3 is right of 2
+            sideAdjustments[3 to Direction.LEFT] = { (x, y) -> 2 to (cubeSideSize - 1 to y) }
+            // Right of 3 is left of 4
+            sideAdjustments[3 to Direction.RIGHT] = { (x, y) -> 4 to (0 to y) }
+
+            // Up of 4 is just the bottom of 1
+            sideAdjustments[4 to Direction.UP] = { (x, y) -> 1 to (x to cubeSideSize - 1) }
+            // Down of 4 is just the top of 5
+            sideAdjustments[4 to Direction.DOWN] = { (x, y) -> 5 to (x to 0) }
+            // Left of 4 is right of 3
+            sideAdjustments[4 to Direction.LEFT] = { (x, y) -> 3 to (cubeSideSize - 1 to y) }
+            // Right of 4 is top of 6
+            // 12,6 -> 4, 2 becomes (2, 0). 2+side[6].first.first, 0+side[6].second.first = 15,9 (as intended
+            sideAdjustments[4 to Direction.RIGHT] = { (x, y) -> 6 to (cubeSideSize - 1 - y to 0) }
+
+            // Up of 5 is just the bottom of 4
+            sideAdjustments[5 to Direction.UP] = { (x, y) -> 4 to (x to cubeSideSize - 1) }
+            // Down of 5 is transposed bottom of 2
+            sideAdjustments[5 to Direction.DOWN] = { (x, y) -> 2 to (cubeSideSize - 1 - x to cubeSideSize - 1) }
+            // Left of 5 is bottom of 3
+            sideAdjustments[5 to Direction.LEFT] = { (x, y) -> 3 to (cubeSideSize - 1 - y to cubeSideSize - 1) }
+            // Right of 5 is left of 6
+            sideAdjustments[5 to Direction.RIGHT] = { (x, y) -> 6 to (0 to y) }
+
+            // Up of 6 is right of 4
+            sideAdjustments[6 to Direction.UP] = { (x, y) -> 4 to (cubeSideSize - 1 to cubeSideSize - 1 - x) }
+            // Down of 6 is left of 2
+            sideAdjustments[6 to Direction.DOWN] = { (x, y) -> 2 to (0 to cubeSideSize - 1 - x) }
+            // Left of 6 is right of 5
+            sideAdjustments[6 to Direction.LEFT] = { (x, y) -> 5 to (cubeSideSize - 1 to y) }
+            // Right of 6 is right of 1
+            sideAdjustments[6 to Direction.RIGHT] = { (x, y) -> 1 to (cubeSideSize - 1 to cubeSideSize - 1 - y) }
+
+            /*
+            pos: 12,6 -> 15, 9
+            side: 4 -> 6 (3->5 in my side counting due to 0-index.)
+
+            12,6
+            X: 4 from start, 0 from end
+            Y: 1 from start, 3 from end
+
+            15,9
+            RelativeX: 2 from start, 1 from end
+            RelativeY: 0 from start, 4 from end
+             */
+        } else {
+            throw NotImplementedError("Not yet bud.")
+        }
+
+        var playerPosition = 0 to 0
+        var playerSide = 1
+        var playerDirection = Direction.RIGHT
+
+        for (instruction in instructions) {
+            repeat(instruction.amount) {
+                val newPosition = playerPosition + playerDirection.step
+                if(newPosition.first < 0 || playerPosition.second < 0 || newPosition.first >= cubeSideSize || newPosition.second >= cubeSideSize) {
+                    val adjusted = sideAdjustments[playerSide to playerDirection]!!(playerPosition)
+                    playerSide = adjusted.first.first
+                    playerDirection = adjusted.first.second
+                    playerPosition = adjusted.second
+                } else {
+                    playerPosition = stepWithinSide(
+                        playerPosition,
+                        newPosition,
+                        sides[playerSide],
+                        grid
+                    )
+                }
+            }
+            playerDirection = playerDirection.spin(instruction.spin)
+        }
+        return (1000 * playerPosition.second) + (4 * playerPosition.first) + playerDirection.answerValue
+    }
+
     fun scenarioOne(textFile: String) =
         File(textFile).readLines()
             .let { parseMapAndDirections(it) }
@@ -171,4 +294,5 @@ object Day22 {
     fun scenarioTwo(textFile: String, cubeSideSize: Int) =
         File(textFile).readLines()
             .let { parseMapCubeAndDirections(it, cubeSideSize) }
+            .let { getCoordinateValueOnCube(it.first, it.second, cubeSideSize) }
 }
