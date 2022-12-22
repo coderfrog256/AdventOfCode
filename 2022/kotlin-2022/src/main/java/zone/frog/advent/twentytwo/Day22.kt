@@ -80,15 +80,14 @@ object Day22 {
         val sides: List<Pair<IntRange, IntRange>>,
         val tiles: Map<IntPair, TileType>
     ) {
-        val sideAdjustments = mutableMapOf<Pair<Int, Direction>, (Player) -> Player>()
+        fun newPlayer() = Player(0 to 0, Direction.RIGHT, 1)
 
-        fun registerSideAdjustments(side: Int, direction: Direction, adjustment: (Player) -> Player) {
+        private val sideAdjustments = mutableMapOf<Pair<Int, Direction>, (Player) -> Player>()
+        private fun registerSideAdjustments(side: Int, direction: Direction, adjustment: (Player) -> Player) {
             sideAdjustments[side to direction] = adjustment
         }
 
-        fun newPlayer() = Player(0 to 0, Direction.RIGHT, 1)
-
-        fun canMoveToTile(player: Player, newPosition: IntPair): Boolean {
+        private fun canMoveToTile(player: Player, newPosition: IntPair): Boolean {
             val side = sides[player.side]
             val resolvedPosition = newPosition.first + side.first.first to newPosition.second + side.second.first
             return when (tiles[resolvedPosition]) {
@@ -99,7 +98,7 @@ object Day22 {
         }
 
         fun attemptMove(player: Player, newPosition: IntPair): Player {
-            return if (newPosition.first < 0 || newPosition.second < 0 || newPosition.first >= sideSize || newPosition.second >= sideSize) {
+            return if (newPosition.first !in 0 until sideSize || newPosition.second !in 0 until sideSize) {
                 val adjustedPlayer = sideAdjustments[player.side to player.direction]!!(player)
                 if (canMoveToTile(adjustedPlayer, adjustedPlayer.position)) {
                     adjustedPlayer
@@ -138,214 +137,160 @@ object Day22 {
                 if (sides[1].first.count() == 4) {
                     // Top of 1 is top of 2
                     out.registerSideAdjustments(1, Direction.UP)
-                    { player -> Player((cubeSideSize - 1 - player.position.first to 0), Direction.DOWN, 2) }
+                    { Player((cubeSideSize - 1 - it.position.first to 0), Direction.DOWN, 2) }
                     // Down of 1 is just the top of 4
                     out.registerSideAdjustments(1, Direction.DOWN)
-                    { player -> Player((player.position.first to 0), Direction.DOWN, 4) }
+                    { Player((it.position.first to 0), Direction.DOWN, 4) }
                     // Left of 1 is top of 3
                     out.registerSideAdjustments(1, Direction.LEFT)
-                    { player -> Player((player.position.second to 0), Direction.DOWN, 3) }
+                    { Player((it.position.second to 0), Direction.DOWN, 3) }
                     // Right of 1 is right-side of 6
                     out.registerSideAdjustments(1, Direction.RIGHT)
-                    { player ->
-                        Player(
-                            (cubeSideSize - 1 to cubeSideSize - 1 - player.position.second),
-                            Direction.LEFT,
-                            6
-                        )
-                    }
+                    { Player((cubeSideSize - 1 to cubeSideSize - 1 - it.position.second), Direction.LEFT, 6) }
 
                     // Top of 2 is top of 1
                     out.registerSideAdjustments(2, Direction.UP)
-                    { player -> Player((cubeSideSize - 1 - player.position.first to 0), Direction.DOWN, 1) }
+                    { Player((cubeSideSize - 1 - it.position.first to 0), Direction.DOWN, 1) }
                     // Down of 2 is bottom of 5
                     out.registerSideAdjustments(2, Direction.DOWN)
-                    { player ->
-                        Player(
-                            (cubeSideSize - 1 - player.position.first to cubeSideSize - 1),
-                            Direction.UP,
-                            5
-                        )
-                    }
+                    { Player((cubeSideSize - 1 - it.position.first to cubeSideSize - 1), Direction.UP, 5) }
                     // Left of 2 is bottom of 6
                     out.registerSideAdjustments(2, Direction.LEFT)
-                    { player ->
-                        Player(
-                            (cubeSideSize - 1 - player.position.second to cubeSideSize - 1),
-                            Direction.UP,
-                            6
-                        )
-                    }
+                    { Player((cubeSideSize - 1 - it.position.second to cubeSideSize - 1), Direction.UP, 6) }
                     // Right of 2 is left of 3
                     out.registerSideAdjustments(2, Direction.RIGHT)
-                    { player -> Player((0 to player.position.second), Direction.RIGHT, 3) }
+                    { Player((0 to it.position.second), Direction.RIGHT, 3) }
 
                     // Up of 3 is left of 1
                     out.registerSideAdjustments(3, Direction.UP)
-                    { player -> Player((0 to player.position.first), Direction.RIGHT, 1) }
+                    { Player((0 to it.position.first), Direction.RIGHT, 1) }
                     // Down of 3 is left of 5
                     out.registerSideAdjustments(3, Direction.DOWN)
-                    { player -> Player((0 to cubeSideSize - 1 - player.position.first), Direction.RIGHT, 5) }
+                    { Player((0 to cubeSideSize - 1 - it.position.first), Direction.RIGHT, 5) }
                     // Left of 3 is right of 2
                     out.registerSideAdjustments(3, Direction.LEFT)
-                    { player -> Player((cubeSideSize - 1 to player.position.second), Direction.LEFT, 2) }
+                    { Player((cubeSideSize - 1 to it.position.second), Direction.LEFT, 2) }
                     // Right of 3 is left of 4
                     out.registerSideAdjustments(3, Direction.RIGHT)
-                    { player -> Player((0 to player.position.second), Direction.RIGHT, 4) }
+                    { Player((0 to it.position.second), Direction.RIGHT, 4) }
 
                     // Up of 4 is just the bottom of 1
                     out.registerSideAdjustments(4, Direction.UP)
-                    { player -> Player((player.position.first to cubeSideSize - 1), Direction.UP, 1) }
+                    { Player((it.position.first to cubeSideSize - 1), Direction.UP, 1) }
                     // Down of 4 is just the top of 5
                     out.registerSideAdjustments(4, Direction.DOWN)
-                    { player -> Player((player.position.first to 0), Direction.DOWN, 5) }
+                    { Player((it.position.first to 0), Direction.DOWN, 5) }
                     // Left of 4 is right of 3
                     out.registerSideAdjustments(4, Direction.LEFT)
-                    { player -> Player((cubeSideSize - 1 to player.position.second), Direction.LEFT, 3) }
+                    { Player((cubeSideSize - 1 to it.position.second), Direction.LEFT, 3) }
                     // Right of 4 is top of 6
                     // 12,6 -> 4, 2 becomes (2, 0). 2+side[6].first.first, 0+side[6].second.first = 15,9 (as intended
                     out.registerSideAdjustments(4, Direction.RIGHT)
-                    { player -> Player((cubeSideSize - 1 - player.position.second to 0), Direction.DOWN, 6) }
+                    { Player((cubeSideSize - 1 - it.position.second to 0), Direction.DOWN, 6) }
 
                     // Up of 5 is just the bottom of 4
                     out.registerSideAdjustments(5, Direction.UP)
-                    { player -> Player((player.position.first to cubeSideSize - 1), Direction.UP, 4) }
+                    { Player((it.position.first to cubeSideSize - 1), Direction.UP, 4) }
                     // Down of 5 is transposed bottom of 2
                     out.registerSideAdjustments(5, Direction.DOWN)
-                    { player ->
-                        Player(
-                            (cubeSideSize - 1 - player.position.first to cubeSideSize - 1),
-                            Direction.UP,
-                            2
-                        )
-                    }
+                    { Player((cubeSideSize - 1 - it.position.first to cubeSideSize - 1), Direction.UP, 2) }
                     // Left of 5 is bottom of 3
                     out.registerSideAdjustments(5, Direction.LEFT)
-                    { player ->
-                        Player(
-                            (cubeSideSize - 1 - player.position.second to cubeSideSize - 1),
-                            Direction.UP,
-                            3
-                        )
-                    }
+                    { Player((cubeSideSize - 1 - it.position.second to cubeSideSize - 1), Direction.UP, 3) }
                     // Right of 5 is left of 6
                     out.registerSideAdjustments(5, Direction.RIGHT)
-                    { player -> Player((0 to player.position.second), Direction.RIGHT, 6) }
+                    { Player((0 to it.position.second), Direction.RIGHT, 6) }
 
                     // Up of 6 is right of 4
                     out.registerSideAdjustments(6, Direction.UP)
-                    { player ->
-                        Player(
-                            (cubeSideSize - 1 to cubeSideSize - 1 - player.position.first),
-                            Direction.LEFT,
-                            4
-                        )
-                    }
+                    { Player((cubeSideSize - 1 to cubeSideSize - 1 - it.position.first), Direction.LEFT, 4) }
                     // Down of 6 is left of 2
                     out.registerSideAdjustments(6, Direction.DOWN)
-                    { player -> Player((0 to cubeSideSize - 1 - player.position.first), Direction.RIGHT, 2) }
+                    { Player((0 to cubeSideSize - 1 - it.position.first), Direction.RIGHT, 2) }
                     // Left of 6 is right of 5
                     out.registerSideAdjustments(6, Direction.LEFT)
-                    { player -> Player((cubeSideSize - 1 to player.position.second), Direction.LEFT, 5) }
+                    { Player((cubeSideSize - 1 to it.position.second), Direction.LEFT, 5) }
                     // Right of 6 is right of 1
                     out.registerSideAdjustments(6, Direction.RIGHT)
-                    { player ->
-                        Player(
-                            (cubeSideSize - 1 to cubeSideSize - 1 - player.position.second),
-                            Direction.LEFT,
-                            1
-                        )
-                    }
+                    { Player((cubeSideSize - 1 to cubeSideSize - 1 - it.position.second), Direction.LEFT, 1) }
                 } else {
                     //Top of 1 is left of 6
                     out.registerSideAdjustments(1, Direction.UP)
-                    { player -> Player((0 to player.position.first), Direction.RIGHT, 6) }
+                    { Player((0 to it.position.first), Direction.RIGHT, 6) }
                     // Down of 1 is top of 3
                     out.registerSideAdjustments(1, Direction.DOWN)
-                    { player -> Player((player.position.first to 0), Direction.DOWN, 3) }
+                    { Player((it.position.first to 0), Direction.DOWN, 3) }
                     // Left of 1 is left of 4
                     out.registerSideAdjustments(1, Direction.LEFT)
-                    { player -> Player((0 to cubeSideSize - 1 - player.position.second), Direction.RIGHT, 4) }
+                    { Player((0 to cubeSideSize - 1 - it.position.second), Direction.RIGHT, 4) }
                     // Right of 1 is left of 2
                     out.registerSideAdjustments(1, Direction.RIGHT)
-                    { player -> Player((0 to player.position.second), Direction.RIGHT, 2) }
+                    { Player((0 to it.position.second), Direction.RIGHT, 2) }
 
                     // Top of 2 is bottom of 6.
                     out.registerSideAdjustments(2, Direction.UP)
-                    { player -> Player((player.position.first to cubeSideSize - 1), Direction.UP, 6) }
+                    { Player((it.position.first to cubeSideSize - 1), Direction.UP, 6) }
                     // Bottom of 2 is the Right of 3
                     out.registerSideAdjustments(2, Direction.DOWN)
-                    { player -> Player((cubeSideSize - 1 to player.position.first), Direction.LEFT, 3) }
+                    { Player((cubeSideSize - 1 to it.position.first), Direction.LEFT, 3) }
                     // Left of 2 is right of 1
                     out.registerSideAdjustments(2, Direction.LEFT)
-                    { player -> Player((cubeSideSize - 1 to player.position.second), Direction.LEFT, 1) }
+                    { Player((cubeSideSize - 1 to it.position.second), Direction.LEFT, 1) }
                     // Right of 2 is the right of 5
                     out.registerSideAdjustments(2, Direction.RIGHT)
-                    { player ->
-                        Player(
-                            (cubeSideSize - 1 to cubeSideSize - 1 - player.position.second),
-                            Direction.LEFT,
-                            5
-                        )
-                    }
+                    { Player((cubeSideSize - 1 to cubeSideSize - 1 - it.position.second), Direction.LEFT, 5) }
 
                     // Top of 3 is bottom of 1
                     out.registerSideAdjustments(3, Direction.UP)
-                    { player -> Player((player.position.first to cubeSideSize - 1), Direction.UP, 1) }
+                    { Player((it.position.first to cubeSideSize - 1), Direction.UP, 1) }
                     // Bottom of 3 is top of 5
                     out.registerSideAdjustments(3, Direction.DOWN)
-                    { player -> Player((player.position.first to 0), Direction.DOWN, 5) }
+                    { Player((it.position.first to 0), Direction.DOWN, 5) }
                     // Left of 3 is top of 4
                     out.registerSideAdjustments(3, Direction.LEFT)
-                    { player -> Player((player.position.second to 0), Direction.DOWN, 4) }
+                    { Player((it.position.second to 0), Direction.DOWN, 4) }
                     // Right of 3 is bottom of 2
                     out.registerSideAdjustments(3, Direction.RIGHT)
-                    { player -> Player((player.position.second to cubeSideSize - 1), Direction.UP, 2) }
+                    { Player((it.position.second to cubeSideSize - 1), Direction.UP, 2) }
 
                     // Top of 4 is left of 3
                     out.registerSideAdjustments(4, Direction.UP)
-                    { player -> Player((0 to player.position.first), Direction.RIGHT, 3) }
+                    { Player((0 to it.position.first), Direction.RIGHT, 3) }
                     // Bottom of 4 is top of 6
                     out.registerSideAdjustments(4, Direction.DOWN)
-                    { player -> Player((player.position.first to 0), Direction.DOWN, 6) }
+                    { Player((it.position.first to 0), Direction.DOWN, 6) }
                     // Left of 4 is left of 1
                     out.registerSideAdjustments(4, Direction.LEFT)
-                    { player -> Player((0 to cubeSideSize - 1 - player.position.second), Direction.RIGHT, 1) }
+                    { Player((0 to cubeSideSize - 1 - it.position.second), Direction.RIGHT, 1) }
                     // Right of 4 is left of 5
                     out.registerSideAdjustments(4, Direction.RIGHT)
-                    { player -> Player((0 to player.position.second), Direction.RIGHT, 5) }
+                    { Player((0 to it.position.second), Direction.RIGHT, 5) }
 
                     //Top of 5 is bottom of 3
                     out.registerSideAdjustments(5, Direction.UP)
-                    { player -> Player((player.position.first to cubeSideSize - 1), Direction.UP, 3) }
+                    { Player((it.position.first to cubeSideSize - 1), Direction.UP, 3) }
                     //Bottom of 5 is right of 6
                     out.registerSideAdjustments(5, Direction.DOWN)
-                    { player -> Player((cubeSideSize - 1 to player.position.first), Direction.LEFT, 6) }
+                    { Player((cubeSideSize - 1 to it.position.first), Direction.LEFT, 6) }
                     // Left of 5 is right of 4
                     out.registerSideAdjustments(5, Direction.LEFT)
-                    { player -> Player((cubeSideSize - 1 to player.position.second), Direction.LEFT, 4) }
+                    { Player((cubeSideSize - 1 to it.position.second), Direction.LEFT, 4) }
                     // Right of 5 is right of 2
                     out.registerSideAdjustments(5, Direction.RIGHT)
-                    { player ->
-                        Player(
-                            (cubeSideSize - 1 to cubeSideSize - 1 - player.position.second),
-                            Direction.LEFT,
-                            2
-                        )
-                    }
+                    { Player((cubeSideSize - 1 to cubeSideSize - 1 - it.position.second), Direction.LEFT, 2) }
 
                     // Top of 6 is bottom of 4
                     out.registerSideAdjustments(6, Direction.UP)
-                    { player -> Player((player.position.first to cubeSideSize - 1), Direction.UP, 4) }
+                    { Player((it.position.first to cubeSideSize - 1), Direction.UP, 4) }
                     // Bottom of 6 is top of 2
                     out.registerSideAdjustments(6, Direction.DOWN)
-                    { player -> Player((player.position.first to 0), Direction.DOWN, 2) }
+                    { Player((it.position.first to 0), Direction.DOWN, 2) }
                     // Left of 6 is top of 1
                     out.registerSideAdjustments(6, Direction.LEFT)
-                    { player -> Player((player.position.second to 0), Direction.DOWN, 1) }
+                    { Player((it.position.second to 0), Direction.DOWN, 1) }
                     // Right of 6 is bottom of 5
                     out.registerSideAdjustments(6, Direction.RIGHT)
-                    { player -> Player((player.position.second to cubeSideSize - 1), Direction.UP, 5) }
+                    { Player((it.position.second to cubeSideSize - 1), Direction.UP, 5) }
                 }
                 return out
             }
@@ -355,6 +300,15 @@ object Day22 {
     data class Player(var position: IntPair, var direction: Direction, var side: Int = 0) {
         fun step(map: Map2D) {
             position = map.attemptMove(this, position + direction.step)
+        }
+
+        fun step(map: Map3D) {
+            val attemptedPosition = position + direction.step
+
+            val moveResult = map.attemptMove(this, attemptedPosition)
+            position = moveResult.position
+            direction = moveResult.direction
+            side = moveResult.side
         }
 
         fun spin(spinDirection: String) {
@@ -369,15 +323,6 @@ object Day22 {
             val side = cubeMap.sides[side]
             val resolvedPosition = position.first + side.first.first to position.second + side.second.first
             return (1000 * resolvedPosition.second) + (4 * resolvedPosition.first) + direction.answerValue
-        }
-
-        fun step(map: Map3D) {
-            val attemptedPosition = position + direction.step
-
-            val moveResult = map.attemptMove(this, attemptedPosition)
-            position = moveResult.position
-            direction = moveResult.direction
-            side = moveResult.side
         }
     }
 
