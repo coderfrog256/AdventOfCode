@@ -179,7 +179,12 @@ object Day22 {
         }
     }
 
+    // 116308 is wrong
+    // 125324 is wrong.
+    // 131026 is wrong
+    // 111030 is too low
     // 30589 too low
+    // 27571 too low
     private fun getCoordinateValueOnCube(cubeMap: CubeMap, instructions: List<Instruction>, cubeSideSize: Int): Int {
         val grid = cubeMap.grid
         val sides = cubeMap.cubeSides
@@ -265,52 +270,74 @@ object Day22 {
             RelativeY: 0 from start, 4 from end
              */
         } else {
-            sideAdjustments[1 to Direction.UP] = { (x, y) -> (2 to Direction.DOWN) to (cubeSideSize - 1 - x to 0) }
+            /*
+            6 is double transposed
+            2 is transposed
+            4 is transposed
+             */
+
+            //Top of 1 is left of 6
+            sideAdjustments[1 to Direction.UP] = { (x, y) -> (6 to Direction.RIGHT) to (0 to x) }
             // Down of 1 is top of 3
             sideAdjustments[1 to Direction.DOWN] = { (x, y) -> (3 to Direction.DOWN) to (x to 0) }
-            sideAdjustments[1 to Direction.LEFT] = { (x, y) -> (3 to Direction.DOWN) to (y to 0) }
+            // Left of 1 is left of 4
+            sideAdjustments[1 to Direction.LEFT] = { (x, y) -> (4 to Direction.RIGHT) to (0 to cubeSideSize - 1 - y) }
             // Right of 1 is left of 2
             sideAdjustments[1 to Direction.RIGHT] =
                 { (x, y) -> (2 to Direction.RIGHT) to (0 to y) }
 
-            sideAdjustments[2 to Direction.UP] = { (x, y) -> (1 to Direction.DOWN) to (cubeSideSize - 1 - x to 0) }
+            // Top of 2 is bottom of 6.
+            sideAdjustments[2 to Direction.UP] =
+                { (x, y) -> (6 to Direction.UP) to (x to cubeSideSize - 1) }
+            // Bottom of 2 is the Right of 3
             sideAdjustments[2 to Direction.DOWN] =
-                { (x, y) -> (5 to Direction.UP) to (cubeSideSize - 1 - x to cubeSideSize - 1) }
+                { (x, y) -> (3 to Direction.LEFT) to (cubeSideSize - 1 to x) }
             // Left of 2 is right of 1
             sideAdjustments[2 to Direction.LEFT] =
                 { (x, y) -> (1 to Direction.LEFT) to (cubeSideSize - 1 to y) }
-            sideAdjustments[2 to Direction.RIGHT] = { (x, y) -> (3 to Direction.RIGHT) to (0 to y) }
+            // Right of 2 is the right of 5
+            sideAdjustments[2 to Direction.RIGHT] =
+                { (x, y) -> (5 to Direction.LEFT) to (cubeSideSize - 1 to cubeSideSize - 1 - y) }
 
             // Top of 3 is bottom of 1
-            sideAdjustments[3 to Direction.UP] = { (x, y) -> (1 to Direction.UP) to (x to cubeSideSize-1) }
+            sideAdjustments[3 to Direction.UP] = { (x, y) -> (1 to Direction.UP) to (x to cubeSideSize - 1) }
             // Bottom of 3 is top of 5
             sideAdjustments[3 to Direction.DOWN] = { (x, y) -> (5 to Direction.DOWN) to (x to 0) }
-            sideAdjustments[3 to Direction.LEFT] = { (x, y) -> (2 to Direction.LEFT) to (cubeSideSize - 1 to y) }
-            sideAdjustments[3 to Direction.RIGHT] = { (x, y) -> (4 to Direction.RIGHT) to (0 to y) }
+            // Left of 3 is top of 4
+            sideAdjustments[3 to Direction.LEFT] = { (x, y) -> (4 to Direction.DOWN) to (y to 0) }
+            // Right of 3 is bottom of 2
+            sideAdjustments[3 to Direction.RIGHT] = { (x, y) -> (2 to Direction.UP) to (y to cubeSideSize - 1) }
 
-            sideAdjustments[4 to Direction.UP] = { (x, y) -> (3 to Direction.UP) to (x to cubeSideSize - 1) }
+            // Top of 4 is left of 3
+            sideAdjustments[4 to Direction.UP] = { (x, y) -> (3 to Direction.RIGHT) to (0 to x) }
             // Bottom of 4 is top of 6
             sideAdjustments[4 to Direction.DOWN] = { (x, y) -> (6 to Direction.DOWN) to (x to 0) }
-            sideAdjustments[4 to Direction.LEFT] = { (x, y) -> (3 to Direction.LEFT) to (cubeSideSize - 1 to y) }
+            // Left of 4 is left of 1
+            sideAdjustments[4 to Direction.LEFT] = { (x, y) -> (1 to Direction.RIGHT) to (0 to cubeSideSize - 1 - y) }
             // Right of 4 is left of 5
             sideAdjustments[4 to Direction.RIGHT] = { (x, y) -> (5 to Direction.RIGHT) to (0 to y) }
 
             //Top of 5 is bottom of 3
             sideAdjustments[5 to Direction.UP] = { (x, y) -> (3 to Direction.UP) to (x to cubeSideSize - 1) }
+            //Bottom of 5 is right of 6
             sideAdjustments[5 to Direction.DOWN] =
-                { (x, y) -> (2 to Direction.UP) to (cubeSideSize - 1 - x to cubeSideSize - 1) }
+                { (x, y) -> (6 to Direction.LEFT) to (cubeSideSize - 1 to x) }
             // Left of 5 is right of 4
             sideAdjustments[5 to Direction.LEFT] =
                 { (x, y) -> (4 to Direction.LEFT) to (cubeSideSize - 1 to y) }
-            sideAdjustments[5 to Direction.RIGHT] = { (x, y) -> (6 to Direction.RIGHT) to (0 to y) }
+            // Right of 5 is right of 2
+            sideAdjustments[5 to Direction.RIGHT] = { (x, y) -> (2 to Direction.LEFT) to (cubeSideSize - 1 to cubeSideSize - 1 - y) }
 
             // Top of 6 is bottom of 4
             sideAdjustments[6 to Direction.UP] =
                 { (x, y) -> (4 to Direction.UP) to (x to cubeSideSize - 1) }
-            sideAdjustments[6 to Direction.DOWN] = { (x, y) -> (2 to Direction.RIGHT) to (0 to cubeSideSize - 1 - x) }
-            sideAdjustments[6 to Direction.LEFT] = { (x, y) -> (5 to Direction.LEFT) to (cubeSideSize - 1 to y) }
+            // Bottom of 6 is top of 2
+            sideAdjustments[6 to Direction.DOWN] = { (x, y) -> (2 to Direction.DOWN) to (x to 0) }
+            // Left of 6 is top of 1
+            sideAdjustments[6 to Direction.LEFT] = { (x, y) -> (1 to Direction.DOWN) to (y to 0) }
+            // Right of 6 is bottom of 5
             sideAdjustments[6 to Direction.RIGHT] =
-                { (x, y) -> (1 to Direction.LEFT) to (cubeSideSize - 1 to cubeSideSize - 1 - y) }
+                { (x, y) -> (5 to Direction.UP) to (y to cubeSideSize - 1) }
         }
 
         var playerPosition = 0 to 0
