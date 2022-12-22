@@ -5,7 +5,6 @@ import java.lang.IllegalArgumentException
 
 
 object Day22 {
-    //TODO: 2D Grid class to deal with wraps better.
     enum class TileType {
         EMPTY,
         WALL
@@ -18,7 +17,7 @@ object Day22 {
         LEFT(-1 to 0, 2);
 
         fun spin(direction: String): Direction {
-            if (direction == "Z") return this
+            if (direction == "X") return this // "X" for the end of instructions.
             return when (direction to this) {
                 "R" to UP -> RIGHT
                 "R" to RIGHT -> DOWN
@@ -35,134 +34,130 @@ object Day22 {
         }
     }
 
-    data class Instruction(val amount: Int, val spin: String)
+    data class Map2D(val tiles: Map<IntPair, TileType>) {
+        fun newPlayer(): Player {
+            return Player(startOfRow(1), Direction.RIGHT)
+        }
 
-    data class CubeMap(val cubeSides: List<Pair<IntRange, IntRange>>, val grid: Map<IntPair, TileType>)
+        private fun startOfRow(row: Int) = tiles.filter { it.key.second == row }.minOf { it.key.first } to row
+        private fun endOfRow(row: Int) = tiles.filter { it.key.second == row }.maxOf { it.key.first } to row
+        private fun topOfColumn(column: Int) = column to tiles.filter { it.key.first == column }.minOf { it.key.second }
+        private fun endOfColumn(column: Int) = column to tiles.filter { it.key.first == column }.maxOf { it.key.second }
 
-    fun parseMapAndDirections(text: List<String>): Pair<Map<IntPair, TileType>, List<Instruction>> {
-        val grid = mutableMapOf<IntPair, TileType>()
-        for (y in 0 until text.size - 2) {
-            for (x in 0 until text[y].length) {
-                when (text[y][x]) {
-                    // Final answer is 1-indexed. We start at one!
-                    '.' -> grid[x + 1 to y + 1] = TileType.EMPTY
-                    '#' -> grid[x + 1 to y + 1] = TileType.WALL
+        fun attemptMove(player: Player, newPosition: IntPair): IntPair {
+            return when (tiles[newPosition]) {
+                null -> when (player.direction) {
+                    Direction.UP -> attemptMove(player, endOfColumn(player.position.first))
+                    Direction.RIGHT -> attemptMove(player, startOfRow(player.position.second))
+                    Direction.DOWN -> attemptMove(player, topOfColumn(player.position.first))
+                    Direction.LEFT -> attemptMove(player, endOfRow(player.position.second))
                 }
+
+                TileType.EMPTY -> newPosition
+                TileType.WALL -> player.position
             }
         }
-        val instructionString = text.last() + "Z"
-        val commandRegex = Regex("(\\d+)(\\w)")
 
-        val instructions = mutableListOf<Instruction>()
-        var i = 0
-        while (i < instructionString.length) {
-            val match = commandRegex.matchAt(instructionString, i) ?: break
-            i += match.value.length
-            instructions += Instruction(match.groupValues[1].toInt(), match.groupValues[2])
-        }
-        return grid to instructions
-    }
-
-    private fun parseMapCubeAndDirections(
-        text: List<String>,
-        cubeSideSize: Int
-    ): Pair<CubeMap, MutableList<Instruction>> {
-        val grid = mutableMapOf<IntPair, TileType>()
-        for (y in 0 until text.size - 2) {
-            for (x in 0 until text[y].length) {
-                when (text[y][x]) {
-                    // Final answer is 1-indexed. We start at one!
-                    '.' -> grid[x + 1 to y + 1] = TileType.EMPTY
-                    '#' -> grid[x + 1 to y + 1] = TileType.WALL
+        companion object {
+            fun parse(lines: List<String>): Map2D {
+                val grid = mutableMapOf<IntPair, TileType>()
+                for (y in lines.indices) {
+                    for (x in 0 until lines[y].length) {
+                        when (lines[y][x]) {
+                            // Final answer is 1-indexed. We start at one!
+                            '.' -> grid[x + 1 to y + 1] = TileType.EMPTY
+                            '#' -> grid[x + 1 to y + 1] = TileType.WALL
+                        }
+                    }
                 }
+                return Map2D(grid)
             }
-        }
-        //Determine ranges for each side. (With a dummy to keep our side numbers in sync with the prompt.)
-        var sides = mutableListOf<Pair<IntRange, IntRange>>(0..0 to 0..0)
-        var i = 1
-        while (i < grid.maxOf { it.key.second }) {
-            val line = grid.filter { it.key.second == i }
-            val lineStart = line.minOf { it.key.first }
-            val lineEnd = line.maxOf { it.key.first }
-
-            for (j in 0..(lineEnd - lineStart) / cubeSideSize) {
-                sides += (lineStart + (cubeSideSize * j)) until (lineStart + (cubeSideSize * (j + 1))) to i..i + (cubeSideSize - 1)
-            }
-            i += cubeSideSize
-        }
-
-        val lineOne = grid.filter { it.key.second == 1 }
-        val sideOneStart = lineOne.minOf { it.key.second }
-
-
-        val instructionString = text.last() + "Z"
-        val commandRegex = Regex("(\\d+)(\\w)")
-
-        val instructions = mutableListOf<Instruction>()
-        i = 0
-        while (i < instructionString.length) {
-            val match = commandRegex.matchAt(instructionString, i) ?: break
-            i += match.value.length
-            instructions += Instruction(match.groupValues[1].toInt(), match.groupValues[2])
-        }
-        return CubeMap(sides, grid) to instructions
-    }
-
-    private fun step(
-        playerPosition: IntPair,
-        playerDirection: Direction,
-        newPosition: IntPair,
-        grid: Map<IntPair, TileType>,
-    ): IntPair {
-        return when (grid[newPosition]) {
-            null -> when (playerDirection) {
-                Direction.UP -> step(
-                    playerPosition,
-                    playerDirection,
-                    playerPosition.first to grid.filter { it.key.first == playerPosition.first }
-                        .maxOf { it.key.second },
-                    grid
-                )
-
-                Direction.RIGHT -> step(
-                    playerPosition,
-                    playerDirection,
-                    grid.filter { it.key.second == playerPosition.second }
-                        .minOf { it.key.first } to playerPosition.second,
-                    grid)
-
-                Direction.DOWN -> step(
-                    playerPosition,
-                    playerDirection,
-                    playerPosition.first to grid.filter { it.key.first == playerPosition.first }
-                        .minOf { it.key.second },
-                    grid
-                )
-
-                Direction.LEFT -> step(
-                    playerPosition,
-                    playerDirection,
-                    grid.filter { it.key.second == playerPosition.second }
-                        .maxOf { it.key.first } to playerPosition.second,
-                    grid)
-            }
-
-            TileType.EMPTY -> newPosition
-            TileType.WALL -> playerPosition
         }
     }
 
-    private fun getCoordinateValue(grid: Map<IntPair, TileType>, instructions: List<Instruction>): Int {
-        var playerPosition = grid.filter { it.key.second == 1 }.minOf { it.key.first } to 1
-        var playerDirection = Direction.RIGHT
+    data class Map3D(
+        val cubeSideSize: Int,
+        val cubeSides: List<Pair<IntRange, IntRange>>,
+        val grid: Map<IntPair, TileType>
+    ) {
+        val sideAdjustments = mutableMapOf<Pair<Int, Direction>, (Player) -> Player>()
 
+        fun registerSideAdjustments(side: Int, direction: Direction, adjustment: (Player) -> Player) {
+            sideAdjustments[side to direction] = adjustment
+        }
+
+        fun newPlayer() = Player(0 to 0, Direction.RIGHT, 1)
+
+        companion object {
+            fun parse(lines: List<String>, cubeSideSize: Int): Map3D {
+                val grid = Map2D.parse(lines).tiles
+
+                //Determine ranges for each side. (With a dummy to keep our side numbers in sync with the prompt.)
+                val sides = mutableListOf(0..0 to 0..0)
+                var i = 1
+                while (i < grid.maxOf { it.key.second }) {
+                    val line = grid.filter { it.key.second == i }
+                    val lineStart = line.minOf { it.key.first }
+                    val lineEnd = line.maxOf { it.key.first }
+
+                    // Handle multiple sides side-by-side.
+                    for (j in 0..(lineEnd - lineStart) / cubeSideSize) {
+                        sides += (lineStart + (cubeSideSize * j)) until (lineStart + (cubeSideSize * (j + 1))) to i..i + (cubeSideSize - 1)
+                    }
+                    i += cubeSideSize
+                }
+                return Map3D(cubeSideSize, sides, grid)
+            }
+        }
+    }
+
+    data class Player(var position: IntPair, var direction: Direction, var side: Int = 0) {
+        fun step(map: Map2D) {
+            position = map.attemptMove(this, position + direction.step)
+        }
+
+        fun spin(spinDirection: String) {
+            direction = direction.spin(spinDirection)
+        }
+
+        fun getPointValue(): Int {
+            return (1000 * position.second) + (4 * position.first) + direction.answerValue
+        }
+    }
+
+    data class Instruction(val amount: Int, val spin: String) {
+        companion object {
+            fun parse(instructionString: String): List<Instruction> {
+                val commands = instructionString + "X"
+                val commandRegex = Regex("(\\d+)(\\w)")
+
+                val instructions = mutableListOf<Instruction>()
+                var i = 0
+                while (i < commands.length) {
+                    val match = commandRegex.matchAt(commands, i) ?: break
+                    i += match.value.length
+                    instructions += Instruction(match.groupValues[1].toInt(), match.groupValues[2])
+                }
+                return instructions
+            }
+        }
+    }
+
+    private fun parse2DMapAndInstructions(text: List<String>): Pair<Map2D, List<Instruction>> {
+        return Map2D.parse(text.subList(0, text.size - 2)) to Instruction.parse(text.last())
+    }
+
+    private fun parse3DMapAndInstructions(text: List<String>, cubeSideSize: Int): Pair<Map3D, List<Instruction>> {
+        return Map3D.parse(text.subList(0, text.size - 2), cubeSideSize) to Instruction.parse(text.last())
+    }
+
+    private fun getCoordinateValue(map: Map2D, instructions: List<Instruction>): Int {
+        val player = map.newPlayer()
         for (instruction in instructions) {
-            repeat(instruction.amount) {
-                playerPosition = step(playerPosition, playerDirection, playerPosition + playerDirection.step, grid)
-            }
-            playerDirection = playerDirection.spin(instruction.spin)
+            repeat(instruction.amount) { player.step(map) }
+            player.spin(instruction.spin)
         }
-        return (1000 * playerPosition.second) + (4 * playerPosition.first) + playerDirection.answerValue
+        return player.getPointValue()
     }
 
     private fun stepWithinSide(
@@ -185,207 +180,212 @@ object Day22 {
     // 111030 is too low
     // 30589 too low
     // 27571 too low
-    private fun getCoordinateValueOnCube(cubeMap: CubeMap, instructions: List<Instruction>, cubeSideSize: Int): Int {
+    private fun getCoordinateValueOnCube(cubeMap: Map3D, instructions: List<Instruction>): Int {
+        val cubeSideSize = cubeMap.cubeSideSize
         val grid = cubeMap.grid
         val sides = cubeMap.cubeSides
 
-        // Side+Direction -> New Side after making the move.
-        val sideAdjustments = mutableMapOf<Pair<Int, Direction>, (IntPair) -> Pair<Pair<Int, Direction>, IntPair>>()
-        // TODO: I'm sure you can figure out a formula for this. For now fuck it.
-        // Note that the x and y are offsets from start within the range, NOT the coordinates from part 1.
-        // This means 0-indexed.
+        // TODO: I'm sure you can figure out a formula for this. For now this is done offline by intently staring at cubes.
         if (sides[1].first.count() == 4) {
-            // Top of 1 is top of 2, transpose x
-            sideAdjustments[1 to Direction.UP] = { (x, y) -> (2 to Direction.DOWN) to (cubeSideSize - 1 - x to 0) }
+            // Top of 1 is top of 2
+            cubeMap.registerSideAdjustments(1, Direction.UP)
+            { player -> Player((cubeSideSize - 1 - player.position.first to 0), Direction.DOWN, 2) }
             // Down of 1 is just the top of 4
-            sideAdjustments[1 to Direction.DOWN] = { (x, y) -> (4 to Direction.DOWN) to (x to 0) }
+            cubeMap.registerSideAdjustments(1, Direction.DOWN)
+            { player -> Player((player.position.first to 0), Direction.DOWN, 4) }
             // Left of 1 is top of 3
-            sideAdjustments[1 to Direction.LEFT] = { (x, y) -> (3 to Direction.DOWN) to (y to 0) }
+            cubeMap.registerSideAdjustments(1, Direction.LEFT)
+            { player -> Player((player.position.second to 0), Direction.DOWN, 3) }
             // Right of 1 is right-side of 6
-            sideAdjustments[1 to Direction.RIGHT] =
-                { (x, y) -> (6 to Direction.LEFT) to (cubeSideSize - 1 to cubeSideSize - 1 - y) }
+            cubeMap.registerSideAdjustments(1, Direction.RIGHT)
+            { player -> Player((cubeSideSize - 1 to cubeSideSize - 1 - player.position.second), Direction.LEFT, 6) }
 
-            // Top of 2 is top of 1, transpose x
-            sideAdjustments[2 to Direction.UP] = { (x, y) -> (1 to Direction.DOWN) to (cubeSideSize - 1 - x to 0) }
+            // Top of 2 is top of 1
+            cubeMap.registerSideAdjustments(2, Direction.UP)
+            { player -> Player((cubeSideSize - 1 - player.position.first to 0), Direction.DOWN, 1) }
             // Down of 2 is bottom of 5
-            sideAdjustments[2 to Direction.DOWN] =
-                { (x, y) -> (5 to Direction.UP) to (cubeSideSize - 1 - x to cubeSideSize - 1) }
+            cubeMap.registerSideAdjustments(2, Direction.DOWN)
+            { player -> Player((cubeSideSize - 1 - player.position.first to cubeSideSize - 1), Direction.UP, 5) }
             // Left of 2 is bottom of 6
-            sideAdjustments[2 to Direction.LEFT] =
-                { (x, y) -> (6 to Direction.UP) to (cubeSideSize - 1 - y to cubeSideSize - 1) }
+            cubeMap.registerSideAdjustments(2, Direction.LEFT)
+            { player -> Player((cubeSideSize - 1 - player.position.second to cubeSideSize - 1), Direction.UP, 6) }
             // Right of 2 is left of 3
-            sideAdjustments[2 to Direction.RIGHT] = { (x, y) -> (3 to Direction.RIGHT) to (0 to y) }
+            cubeMap.registerSideAdjustments(2, Direction.RIGHT)
+            { player -> Player((0 to player.position.second), Direction.RIGHT, 3) }
 
             // Up of 3 is left of 1
-            sideAdjustments[3 to Direction.UP] = { (x, y) -> (1 to Direction.RIGHT) to (0 to x) }
+            cubeMap.registerSideAdjustments(3, Direction.UP)
+            { player -> Player((0 to player.position.first), Direction.RIGHT, 1) }
             // Down of 3 is left of 5
-            sideAdjustments[3 to Direction.DOWN] = { (x, y) -> (5 to Direction.RIGHT) to (0 to cubeSideSize - 1 - x) }
+            cubeMap.registerSideAdjustments(3, Direction.DOWN)
+            { player -> Player((0 to cubeSideSize - 1 - player.position.first), Direction.RIGHT, 5) }
             // Left of 3 is right of 2
-            sideAdjustments[3 to Direction.LEFT] = { (x, y) -> (2 to Direction.LEFT) to (cubeSideSize - 1 to y) }
+            cubeMap.registerSideAdjustments(3, Direction.LEFT)
+            { player -> Player((cubeSideSize - 1 to player.position.second), Direction.LEFT, 2) }
             // Right of 3 is left of 4
-            sideAdjustments[3 to Direction.RIGHT] = { (x, y) -> (4 to Direction.RIGHT) to (0 to y) }
+            cubeMap.registerSideAdjustments(3, Direction.RIGHT)
+            { player -> Player((0 to player.position.second), Direction.RIGHT, 4) }
 
             // Up of 4 is just the bottom of 1
-            sideAdjustments[4 to Direction.UP] = { (x, y) -> (1 to Direction.UP) to (x to cubeSideSize - 1) }
+            cubeMap.registerSideAdjustments(4, Direction.UP)
+            { player -> Player((player.position.first to cubeSideSize - 1), Direction.UP, 1) }
             // Down of 4 is just the top of 5
-            sideAdjustments[4 to Direction.DOWN] = { (x, y) -> (5 to Direction.DOWN) to (x to 0) }
+            cubeMap.registerSideAdjustments(4, Direction.DOWN)
+            { player -> Player((player.position.first to 0), Direction.DOWN, 5) }
             // Left of 4 is right of 3
-            sideAdjustments[4 to Direction.LEFT] = { (x, y) -> (3 to Direction.LEFT) to (cubeSideSize - 1 to y) }
+            cubeMap.registerSideAdjustments(4, Direction.LEFT)
+            { player -> Player((cubeSideSize - 1 to player.position.second), Direction.LEFT, 3) }
             // Right of 4 is top of 6
             // 12,6 -> 4, 2 becomes (2, 0). 2+side[6].first.first, 0+side[6].second.first = 15,9 (as intended
-            sideAdjustments[4 to Direction.RIGHT] = { (x, y) -> (6 to Direction.DOWN) to (cubeSideSize - 1 - y to 0) }
+            cubeMap.registerSideAdjustments(4, Direction.RIGHT)
+            { player -> Player((cubeSideSize - 1 - player.position.second to 0), Direction.DOWN, 6) }
 
             // Up of 5 is just the bottom of 4
-            sideAdjustments[5 to Direction.UP] = { (x, y) -> (4 to Direction.UP) to (x to cubeSideSize - 1) }
+            cubeMap.registerSideAdjustments(5, Direction.UP)
+            { player -> Player((player.position.first to cubeSideSize - 1), Direction.UP, 4) }
             // Down of 5 is transposed bottom of 2
-            sideAdjustments[5 to Direction.DOWN] =
-                { (x, y) -> (2 to Direction.UP) to (cubeSideSize - 1 - x to cubeSideSize - 1) }
+            cubeMap.registerSideAdjustments(5, Direction.DOWN)
+            { player -> Player((cubeSideSize - 1 - player.position.first to cubeSideSize - 1), Direction.UP, 2) }
             // Left of 5 is bottom of 3
-            sideAdjustments[5 to Direction.LEFT] =
-                { (x, y) -> (3 to Direction.UP) to (cubeSideSize - 1 - y to cubeSideSize - 1) }
+            cubeMap.registerSideAdjustments(5, Direction.LEFT)
+            { player -> Player((cubeSideSize - 1 - player.position.second to cubeSideSize - 1), Direction.UP, 3) }
             // Right of 5 is left of 6
-            sideAdjustments[5 to Direction.RIGHT] = { (x, y) -> (6 to Direction.RIGHT) to (0 to y) }
+            cubeMap.registerSideAdjustments(5, Direction.RIGHT)
+            { player -> Player((0 to player.position.second), Direction.RIGHT, 6) }
 
             // Up of 6 is right of 4
-            sideAdjustments[6 to Direction.UP] =
-                { (x, y) -> (4 to Direction.LEFT) to (cubeSideSize - 1 to cubeSideSize - 1 - x) }
+            cubeMap.registerSideAdjustments(6, Direction.UP)
+            { player -> Player((cubeSideSize - 1 to cubeSideSize - 1 - player.position.first), Direction.LEFT, 4) }
             // Down of 6 is left of 2
-            sideAdjustments[6 to Direction.DOWN] = { (x, y) -> (2 to Direction.RIGHT) to (0 to cubeSideSize - 1 - x) }
+            cubeMap.registerSideAdjustments(6, Direction.DOWN)
+            { player -> Player((0 to cubeSideSize - 1 - player.position.first), Direction.RIGHT, 2) }
             // Left of 6 is right of 5
-            sideAdjustments[6 to Direction.LEFT] = { (x, y) -> (5 to Direction.LEFT) to (cubeSideSize - 1 to y) }
+            cubeMap.registerSideAdjustments(6, Direction.LEFT)
+            { player -> Player((cubeSideSize - 1 to player.position.second), Direction.LEFT, 5) }
             // Right of 6 is right of 1
-            sideAdjustments[6 to Direction.RIGHT] =
-                { (x, y) -> (1 to Direction.LEFT) to (cubeSideSize - 1 to cubeSideSize - 1 - y) }
-
-            /*
-            pos: 12,6 -> 15, 9
-            side: 4 -> 6 (3->5 in my side counting due to 0-index.)
-
-            12,6
-            X: 4 from start, 0 from end
-            Y: 1 from start, 3 from end
-
-            15,9
-            RelativeX: 2 from start, 1 from end
-            RelativeY: 0 from start, 4 from end
-             */
+            cubeMap.registerSideAdjustments(6, Direction.RIGHT)
+            { player -> Player((cubeSideSize - 1 to cubeSideSize - 1 - player.position.second), Direction.LEFT, 1) }
         } else {
-            /*
-            6 is double transposed
-            2 is transposed
-            4 is transposed
-             */
-
             //Top of 1 is left of 6
-            sideAdjustments[1 to Direction.UP] = { (x, y) -> (6 to Direction.RIGHT) to (0 to x) }
+            cubeMap.registerSideAdjustments(1, Direction.UP)
+            { player -> Player((0 to player.position.first), Direction.RIGHT, 6) }
             // Down of 1 is top of 3
-            sideAdjustments[1 to Direction.DOWN] = { (x, y) -> (3 to Direction.DOWN) to (x to 0) }
+            cubeMap.registerSideAdjustments(1, Direction.DOWN)
+            { player -> Player((player.position.first to 0), Direction.DOWN, 3) }
             // Left of 1 is left of 4
-            sideAdjustments[1 to Direction.LEFT] = { (x, y) -> (4 to Direction.RIGHT) to (0 to cubeSideSize - 1 - y) }
+            cubeMap.registerSideAdjustments(1, Direction.LEFT)
+            { player -> Player((0 to cubeSideSize - 1 - player.position.second), Direction.RIGHT, 4) }
             // Right of 1 is left of 2
-            sideAdjustments[1 to Direction.RIGHT] =
-                { (x, y) -> (2 to Direction.RIGHT) to (0 to y) }
+            cubeMap.registerSideAdjustments(1, Direction.RIGHT)
+            { player -> Player((0 to player.position.second), Direction.RIGHT, 2) }
 
             // Top of 2 is bottom of 6.
-            sideAdjustments[2 to Direction.UP] =
-                { (x, y) -> (6 to Direction.UP) to (x to cubeSideSize - 1) }
+            cubeMap.registerSideAdjustments(2, Direction.UP)
+            { player -> Player((player.position.first to cubeSideSize - 1), Direction.UP, 6) }
             // Bottom of 2 is the Right of 3
-            sideAdjustments[2 to Direction.DOWN] =
-                { (x, y) -> (3 to Direction.LEFT) to (cubeSideSize - 1 to x) }
+            cubeMap.registerSideAdjustments(2, Direction.DOWN)
+            { player -> Player((cubeSideSize - 1 to player.position.first), Direction.LEFT, 3) }
             // Left of 2 is right of 1
-            sideAdjustments[2 to Direction.LEFT] =
-                { (x, y) -> (1 to Direction.LEFT) to (cubeSideSize - 1 to y) }
+            cubeMap.registerSideAdjustments(2, Direction.LEFT)
+            { player -> Player((cubeSideSize - 1 to player.position.second), Direction.LEFT, 1) }
             // Right of 2 is the right of 5
-            sideAdjustments[2 to Direction.RIGHT] =
-                { (x, y) -> (5 to Direction.LEFT) to (cubeSideSize - 1 to cubeSideSize - 1 - y) }
+            cubeMap.registerSideAdjustments(2, Direction.RIGHT)
+            { player -> Player((cubeSideSize - 1 to cubeSideSize - 1 - player.position.second), Direction.LEFT, 5) }
 
             // Top of 3 is bottom of 1
-            sideAdjustments[3 to Direction.UP] = { (x, y) -> (1 to Direction.UP) to (x to cubeSideSize - 1) }
+            cubeMap.registerSideAdjustments(3, Direction.UP)
+            { player -> Player((player.position.first to cubeSideSize - 1), Direction.UP, 1) }
             // Bottom of 3 is top of 5
-            sideAdjustments[3 to Direction.DOWN] = { (x, y) -> (5 to Direction.DOWN) to (x to 0) }
+            cubeMap.registerSideAdjustments(3, Direction.DOWN)
+            { player -> Player((player.position.first to 0), Direction.DOWN, 5) }
             // Left of 3 is top of 4
-            sideAdjustments[3 to Direction.LEFT] = { (x, y) -> (4 to Direction.DOWN) to (y to 0) }
+            cubeMap.registerSideAdjustments(3, Direction.LEFT)
+            { player -> Player((player.position.second to 0), Direction.DOWN, 4) }
             // Right of 3 is bottom of 2
-            sideAdjustments[3 to Direction.RIGHT] = { (x, y) -> (2 to Direction.UP) to (y to cubeSideSize - 1) }
+            cubeMap.registerSideAdjustments(3, Direction.RIGHT)
+            { player -> Player((player.position.second to cubeSideSize - 1), Direction.UP, 2) }
 
             // Top of 4 is left of 3
-            sideAdjustments[4 to Direction.UP] = { (x, y) -> (3 to Direction.RIGHT) to (0 to x) }
+            cubeMap.registerSideAdjustments(4, Direction.UP)
+            { player -> Player((0 to player.position.first), Direction.RIGHT, 3) }
             // Bottom of 4 is top of 6
-            sideAdjustments[4 to Direction.DOWN] = { (x, y) -> (6 to Direction.DOWN) to (x to 0) }
+            cubeMap.registerSideAdjustments(4, Direction.DOWN)
+            { player -> Player((player.position.first to 0), Direction.DOWN, 6) }
             // Left of 4 is left of 1
-            sideAdjustments[4 to Direction.LEFT] = { (x, y) -> (1 to Direction.RIGHT) to (0 to cubeSideSize - 1 - y) }
+            cubeMap.registerSideAdjustments(4, Direction.LEFT)
+            { player -> Player((0 to cubeSideSize - 1 - player.position.second), Direction.RIGHT, 1) }
             // Right of 4 is left of 5
-            sideAdjustments[4 to Direction.RIGHT] = { (x, y) -> (5 to Direction.RIGHT) to (0 to y) }
+            cubeMap.registerSideAdjustments(4, Direction.RIGHT)
+            { player -> Player((0 to player.position.second), Direction.RIGHT, 5) }
 
             //Top of 5 is bottom of 3
-            sideAdjustments[5 to Direction.UP] = { (x, y) -> (3 to Direction.UP) to (x to cubeSideSize - 1) }
+            cubeMap.registerSideAdjustments(5, Direction.UP)
+            { player -> Player((player.position.first to cubeSideSize - 1), Direction.UP, 3) }
             //Bottom of 5 is right of 6
-            sideAdjustments[5 to Direction.DOWN] =
-                { (x, y) -> (6 to Direction.LEFT) to (cubeSideSize - 1 to x) }
+            cubeMap.registerSideAdjustments(5, Direction.DOWN)
+            { player -> Player((cubeSideSize - 1 to player.position.first), Direction.LEFT, 6) }
             // Left of 5 is right of 4
-            sideAdjustments[5 to Direction.LEFT] =
-                { (x, y) -> (4 to Direction.LEFT) to (cubeSideSize - 1 to y) }
+            cubeMap.registerSideAdjustments(5, Direction.LEFT)
+            { player -> Player((cubeSideSize - 1 to player.position.second), Direction.LEFT, 4) }
             // Right of 5 is right of 2
-            sideAdjustments[5 to Direction.RIGHT] = { (x, y) -> (2 to Direction.LEFT) to (cubeSideSize - 1 to cubeSideSize - 1 - y) }
+            cubeMap.registerSideAdjustments(5, Direction.RIGHT)
+            { player -> Player((cubeSideSize - 1 to cubeSideSize - 1 - player.position.second), Direction.LEFT, 2) }
 
             // Top of 6 is bottom of 4
-            sideAdjustments[6 to Direction.UP] =
-                { (x, y) -> (4 to Direction.UP) to (x to cubeSideSize - 1) }
+            cubeMap.registerSideAdjustments(6, Direction.UP)
+            { player -> Player((player.position.first to cubeSideSize - 1), Direction.UP, 4) }
             // Bottom of 6 is top of 2
-            sideAdjustments[6 to Direction.DOWN] = { (x, y) -> (2 to Direction.DOWN) to (x to 0) }
+            cubeMap.registerSideAdjustments(6, Direction.DOWN)
+            { player -> Player((player.position.first to 0), Direction.DOWN, 2) }
             // Left of 6 is top of 1
-            sideAdjustments[6 to Direction.LEFT] = { (x, y) -> (1 to Direction.DOWN) to (y to 0) }
+            cubeMap.registerSideAdjustments(6, Direction.LEFT)
+            { player -> Player((player.position.second to 0), Direction.DOWN, 1) }
             // Right of 6 is bottom of 5
-            sideAdjustments[6 to Direction.RIGHT] =
-                { (x, y) -> (5 to Direction.UP) to (y to cubeSideSize - 1) }
+            cubeMap.registerSideAdjustments(6, Direction.RIGHT)
+            { player -> Player((player.position.second to cubeSideSize - 1), Direction.UP, 5) }
         }
 
-        var playerPosition = 0 to 0
-        var playerSide = 1
-        var playerDirection = Direction.RIGHT
+        val player = cubeMap.newPlayer()
 
         for (instruction in instructions) {
             repeat(instruction.amount) {
-                var newPosition = playerPosition + playerDirection.step
+                var newPosition = player.position + player.direction.step
                 if (newPosition.first < 0 || newPosition.second < 0 || newPosition.first >= cubeSideSize || newPosition.second >= cubeSideSize) {
-                    val adjusted = sideAdjustments[playerSide to playerDirection]!!(playerPosition)
+                    val adjustedPlayer = cubeMap.sideAdjustments[player.side to player.direction]!!(player)
 
-                    val newPosition = adjusted.second
-                    val newSide = adjusted.first.first
-                    val newDirection = adjusted.first.second
-                    playerPosition = stepWithinSide(
-                        playerPosition,
-                        newPosition,
-                        sides[newSide],
+                    player.position = stepWithinSide(
+                        player.position,
+                        adjustedPlayer.position,
+                        sides[adjustedPlayer.side],
                         grid
                     )
-                    if (playerPosition == newPosition) {
-                        playerSide = newSide
-                        playerDirection = newDirection
+                    if (player.position == adjustedPlayer.position) {
+                        player.side = adjustedPlayer.side
+                        player.direction = adjustedPlayer.direction
                     }
                 } else {
-                    playerPosition = stepWithinSide(
-                        playerPosition,
+                    player.position = stepWithinSide(
+                        player.position,
                         newPosition,
-                        sides[playerSide],
+                        sides[player.side],
                         grid
                     )
                 }
             }
-            playerDirection = playerDirection.spin(instruction.spin)
+            player.direction = player.direction.spin(instruction.spin)
         }
-        val side = sides[playerSide]
-        val resolvedPosition = playerPosition.first + side.first.first to playerPosition.second + side.second.first
-        return (1000 * resolvedPosition.second) + (4 * resolvedPosition.first) + playerDirection.answerValue
+        val side = sides[player.side]
+        val resolvedPosition = player.position.first + side.first.first to player.position.second + side.second.first
+        return (1000 * resolvedPosition.second) + (4 * resolvedPosition.first) + player.direction.answerValue
     }
 
     fun scenarioOne(textFile: String) =
         File(textFile).readLines()
-            .let { parseMapAndDirections(it) }
+            .let { parse2DMapAndInstructions(it) }
             .let { getCoordinateValue(it.first, it.second) }
 
     fun scenarioTwo(textFile: String, cubeSideSize: Int) =
         File(textFile).readLines()
-            .let { parseMapCubeAndDirections(it, cubeSideSize) }
-            .let { getCoordinateValueOnCube(it.first, it.second, cubeSideSize) }
+            .let { parse3DMapAndInstructions(it, cubeSideSize) }
+            .let { getCoordinateValueOnCube(it.first, it.second) }
 }
