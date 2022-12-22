@@ -21,3 +21,5 @@ operator fun <T> List<List<T>>.get(position: IntPair): T {
 operator fun <T> MutableGrid<T>.set(position: IntPair, value: T) {
     this[position.first][position.second] = value
 }
+
+operator fun IntPair.plus(rhs: IntPair) = this.first+rhs.first to this.second+rhs.second
