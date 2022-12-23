@@ -76,12 +76,14 @@ object Day23 {
         var graph = HashMap(startingGraph)
         val roundsToSimulate = if (runToCompletion) Int.MAX_VALUE else TEST_ROUND_COUNT
         repeat(roundsToSimulate) { rounds ->
-            //Part 1
+            // First half, pick next positions.
             graph.values.forEach { it.pickNextPosition(graph) }
             if (runToCompletion && graph.all { it.value.hasNoMoves() }) {
                 return rounds + 1
             }
 
+            // Second half, execute.
+            // If there's any conflicts, undo the conflicting position changes and reattempt the move from scratch.
             val newGraph = HashMap<IntPair, Elf>()
             var settled = false
             while (!settled) {
