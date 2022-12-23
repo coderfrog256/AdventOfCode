@@ -4,7 +4,7 @@ import java.io.File
 
 
 object Day23 {
-    val ROUND_COUNT = 10
+    private const val TEST_ROUND_COUNT = 10
     val NORTH_OFFSETS = listOf(
         -1 to -1,
         0 to -1,
@@ -25,9 +25,6 @@ object Day23 {
         -1 to 0,
         -1 to 1,
     )
-    val ALL_OFFSETS = (NORTH_OFFSETS + SOUTH_OFFSETS + EAST_OFFSETS + WEST_OFFSETS).toSet().toList()
-
-    data class Grid(var graph: Map<IntPair, Elf>, val xRange: IntRange, val yRange: IntRange)
 
     enum class Move(val move: IntPair, val offsets: List<IntPair>) {
         NORTH(0 to -1, NORTH_OFFSETS),
@@ -35,15 +32,8 @@ object Day23 {
         WEST(-1 to 0, WEST_OFFSETS),
         EAST(1 to 0, EAST_OFFSETS);
 
-        private fun inRange(position: IntPair, xRange: IntRange, yRange: IntRange): Boolean {
-//            val move = position + move
-//            return move.first in xRange && move.second in yRange
-            return true
-        }
-
-        fun canMove(position: IntPair, grid: Grid): Boolean {
-            return inRange(position, grid.xRange, grid.yRange)
-                    && offsets.map { it + position }.none { it in grid.graph }
+        fun canMove(position: IntPair, grid: Map<IntPair, Elf>): Boolean {
+            return offsets.map { it + position }.none { it in grid }
         }
     }
 
@@ -52,15 +42,13 @@ object Day23 {
         var proposedPosition: IntPair,
         val moves: MutableList<Move> = mutableListOf(*Move.values())
     ) {
-        fun pickNextPosition(grid: Grid) {
+        fun pickNextPosition(grid: Map<IntPair, Elf>) {
             proposedPosition = position
-            if (ALL_OFFSETS.map { it + position }.none { it in grid.graph }) {
-                moves += moves.removeFirst()
-                return
-            }
-            val move = moves.firstOrNull { it.canMove(position, grid) }
-            if(move != null) {
-                proposedPosition = position + move.move
+            if (Move.values().flatMap { it.offsets }.map { it + position }.any { it in grid }) {
+                val move = moves.firstOrNull { it.canMove(position, grid) }
+                if (move != null) {
+                    proposedPosition = position + move.move
+                }
             }
             moves += moves.removeFirst()
         }
@@ -68,9 +56,11 @@ object Day23 {
         fun settle() {
             position = proposedPosition
         }
+
+        fun hasNoMoves() = position == proposedPosition
     }
 
-    private fun buildGraph(lines: List<String>): Grid {
+    private fun buildGraph(lines: List<String>): Map<IntPair, Elf> {
         val graph = mutableMapOf<IntPair, Elf>()
         lines.forEachIndexed { y, line ->
             line.forEachIndexed { x, char ->
@@ -79,21 +69,23 @@ object Day23 {
                 }
             }
         }
-        return Grid(graph, lines[0].indices, lines.indices)
+        return graph
     }
 
-    private fun runSimulation(grid: Grid, runToCompletion: Boolean): Int {
-        repeat(if(runToCompletion) Int.MAX_VALUE else ROUND_COUNT) {
+    private fun runSimulation(startingGraph: Map<IntPair, Elf>, runToCompletion: Boolean): Int {
+        var graph = HashMap(startingGraph)
+        val roundsToSimulate = if (runToCompletion) Int.MAX_VALUE else TEST_ROUND_COUNT
+        repeat(roundsToSimulate) { rounds ->
             //Part 1
-            grid.graph.values.forEach { it.pickNextPosition(grid) }
-            if(runToCompletion && grid.graph.values.all { it.position == it.proposedPosition }) {
-                return it+1
+            graph.values.forEach { it.pickNextPosition(graph) }
+            if (runToCompletion && graph.all { it.value.hasNoMoves() }) {
+                return rounds + 1
             }
 
-            val newGraph = mutableMapOf<IntPair, Elf>()
+            val newGraph = HashMap<IntPair, Elf>()
             var settled = false
             while (!settled) {
-                settled = grid.graph.values.all {
+                settled = graph.values.all {
                     val proposedOccupant = newGraph[it.proposedPosition]
                     if (proposedOccupant == null) {
                         newGraph[it.proposedPosition] = it
@@ -106,12 +98,12 @@ object Day23 {
                     }
                 }
             }
-            grid.graph = newGraph
-            grid.graph.values.forEach { it.settle() }
+            graph = newGraph
+            graph.values.forEach { it.settle() }
         }
-        val xRange = grid.graph.minOf { it.key.first } .. grid.graph.maxOf { it.key.first }
-        val yRange = grid.graph.minOf { it.key.second } .. grid.graph.maxOf { it.key.second }
-        return (xRange.count() * yRange.count()) - grid.graph.size
+        val xRange = graph.minOf { it.key.first }..graph.maxOf { it.key.first }
+        val yRange = graph.minOf { it.key.second }..graph.maxOf { it.key.second }
+        return (xRange.count() * yRange.count()) - graph.size
     }
 
     fun scenarioOne(textFile: String) =
