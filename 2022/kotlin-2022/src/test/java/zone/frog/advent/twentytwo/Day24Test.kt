@@ -8,21 +8,21 @@ import zone.frog.advent.twentytwo.Day24.scenarioTwo
 class Day24Test {
     @Test
     internal fun testOne() {
-        println(scenarioOne("../input/day24-test.txt"))
+        assertEquals(18, scenarioOne("../input/day24-test.txt"))
     }
 
     @Test
     internal fun testScenarioOne() {
-        println(scenarioOne("../input/day24.txt"))
+        assertEquals(271, scenarioOne("../input/day24.txt"))
     }
 
     @Test
     internal fun testTwo() {
-        println(scenarioTwo("../input/day24-test.txt"))
+        assertEquals(54, scenarioTwo("../input/day24-test.txt"))
     }
 
     @Test
     internal fun testScenarioTwo() {
-        println(scenarioTwo("../input/day24.txt"))
+        assertEquals(813, scenarioTwo("../input/day24.txt"))
     }
 }
