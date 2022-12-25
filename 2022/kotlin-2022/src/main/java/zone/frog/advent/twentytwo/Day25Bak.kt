@@ -4,7 +4,7 @@ import java.io.File
 import kotlin.math.pow
 
 
-object Day25 {
+object Day25Bak {
     private val digitMap = mapOf(
         '2' to 2,
         '1' to 1,
@@ -57,10 +57,14 @@ object Day25 {
 //        return numbers.next()
 
         // Brute Force
+        val percentage = number/1000
         val builder = StringBuilder()
         var remaining = number
         while(remaining-- > 0) {
             increment(builder, 0)
+            if(remaining % percentage == 0L) {
+                println("Currently at: $remaining")
+            }
         }
         return builder.toString()
     }

@@ -30,7 +30,7 @@ class Day25Test {
 
         mapping.forEach {
             assertEquals(it.value, decimalToSnafu(it.key), "${it.key} -> ${it.value}")
-//            assertEquals(it.key, snafuToDecimal(it.value), "${it.value} -> ${it.key}")
+            assertEquals(it.key, snafuToDecimal(it.value), "${it.value} -> ${it.key}")
         }
     }
 
@@ -53,18 +53,19 @@ class Day25Test {
         )
         mapping.forEach {
             assertEquals(it.value, snafuToDecimal(it.key), "${it.key} -> ${it.value}")
-//            assertEquals(it.key, decimalToSnafu(it.value), "${it.value} -> ${it.key}")
+            assertEquals(it.key, decimalToSnafu(it.value), "${it.value} -> ${it.key}")
         }
+        assertEquals(4890, mapping.keys.sumOf { snafuToDecimal(it) })
     }
 
     @Test
-    internal fun testOne() {
-        println(scenarioOne("../input/day25-test.txt"))
+    internal fun relevantTest() {
+        assertEquals("2=-1=0", decimalToSnafu(4890))
     }
 
     @Test
     internal fun testScenarioOne() {
-        println(scenarioOne("../input/day25.txt"))
+//        println(scenarioOne("../input/day25.txt"))
     }
 
     @Test
