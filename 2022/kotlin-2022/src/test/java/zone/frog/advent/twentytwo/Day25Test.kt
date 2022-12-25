@@ -4,7 +4,6 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 import zone.frog.advent.twentytwo.Day25.decimalToSnafu
 import zone.frog.advent.twentytwo.Day25.scenarioOne
-import zone.frog.advent.twentytwo.Day25.scenarioTwo
 import zone.frog.advent.twentytwo.Day25.snafuToDecimal
 
 class Day25Test {
@@ -65,16 +64,6 @@ class Day25Test {
 
     @Test
     internal fun testScenarioOne() {
-//        println(scenarioOne("../input/day25.txt"))
-    }
-
-    @Test
-    internal fun testTwo() {
-        println(scenarioTwo("../input/day25-test.txt"))
-    }
-
-    @Test
-    internal fun testScenarioTwo() {
-        println(scenarioTwo("../input/day25.txt"))
+        assertEquals("2-02===-21---2002==0", scenarioOne("../input/day25.txt"))
     }
 }

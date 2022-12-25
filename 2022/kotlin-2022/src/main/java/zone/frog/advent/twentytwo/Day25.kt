@@ -13,10 +13,9 @@ object Day25 {
         '=' to -2
     )
 
-    fun increment(builder: StringBuilder, location: Int) {
+    private fun increment(builder: StringBuilder, location: Int) {
         if (location == builder.length) {
             builder.insert(0, '1')
-            println("String now at: $builder")
             return
         }
         val char = builder.length - 1 - location
@@ -32,37 +31,69 @@ object Day25 {
         }
     }
 
-    fun bruteForceNumbers() = sequence {
-        val builder = StringBuilder()
+    private fun decrementChar(char: Char): Char {
+        return when (char) {
+            '2' -> '1'
+            '1' -> '0'
+            '0' -> '-'
+            '-' -> '='
+            else -> 'X'
+        }
+    }
+
+    private fun decrement(builder: StringBuilder, desiredValue: Long) {
+        // Special case. If the value is < 5, just start from the beginning and increment.
+        if(desiredValue < 5) {
+            builder.clear()
+            return
+        }
+
+        var index = 0
         while (true) {
-            increment(builder, 0)
-            yield(builder.toString())
+            val decimal = snafuToDecimal(builder.toString())
+            if (decimal <= desiredValue || index >= builder.length) return
+
+            if (snafuToDecimal(builder.substring(1)) > desiredValue) {
+                // Fast decrease. If we can drop a whole order of magnitude, do so.
+                builder.deleteCharAt(0)
+            } else {
+                // Slow decrease. Decrement the characters until we hit the desired value, starting at the leftmost.
+                val char = builder[index]
+                val decremented = decrementChar(char)
+                if (index == 0 && decremented == '0') {
+                    // For the leftmost character, it can never go below 1.
+                    ++index
+                } else if (decremented == 'X') {
+                    // For the rest, if it is below -2 (=), move on/
+                    ++index
+                } else {
+                    // Try to swap out the character. If we go below the desired value, reset it and move to the next char.
+                    builder[index] = decremented
+                    if (snafuToDecimal(builder.toString()) < desiredValue) {
+                        builder[index] = char
+                        ++index
+                    }
+                }
+            }
         }
     }
 
     fun decimalToSnafu(number: Long): String {
-        // 4890 -> 2=-1=0
-        // Math.pow(number.toDouble(), 1/5.0) -> 5.468418851893543
-
-        // Brute Force
-//        val percentage = number/100
-//        val numbers = bruteForceNumbers().iterator()
-//        var remaining = number
-//        while(remaining-- > 1) {
-//            numbers.next()
-//            if(remaining % percentage == 0L) {
-//                println("Currently at: $remaining")
-//            }
-//        }
-//        return numbers.next()
-
-        // Brute Force
-        val builder = StringBuilder()
-        var remaining = number
-        while(remaining-- > 0) {
-            increment(builder, 0)
+        // Start with a super high number, bigger than the desired number.
+        val remaining = StringBuilder("2")
+        while(snafuToDecimal(remaining.toString()) < number) {
+            remaining.append('2')
         }
-        return builder.toString()
+        // Shrink it down to at or below the desiredValue
+        decrement(remaining, number)
+
+        // In case we overshot the number, increment it back.
+        var toIncrement = number - snafuToDecimal(remaining.toString())
+        println("Remaining to increment: $toIncrement")
+        while (toIncrement-- > 0) {
+            increment(remaining, 0)
+        }
+        return remaining.toString()
     }
 
     fun snafuToDecimal(snafu: String): Long {
@@ -75,12 +106,8 @@ object Day25 {
             .toLong()
     }
 
-    // Not 1=-=10-1-11=
     fun scenarioOne(textFile: String) =
         File(textFile).readLines()
             .sumOf { snafuToDecimal(it) }
             .let { decimalToSnafu(it) }
-
-    fun scenarioTwo(textFile: String) =
-        File(textFile)
 }
