@@ -17,11 +17,11 @@
     (item-priority (first (intersection first-half second-half)))))
 
 ;; Part 1
-(loop for line in (str:lines (str:from-file "../input/day3.txt"))
-      summing (bag-value line) into sum
-      finally (return sum))
+(time (print (loop for line in (str:lines (str:from-file "../input/day3.txt"))
+                   summing (bag-value line) into sum
+                   finally (return sum))))
 
-(defun group-lists (lists n)
+(defun group-lists (n lists)
   (loop for list in lists
         with out = '()
         with pending = '()
@@ -32,27 +32,15 @@
         finally (return out)))
 
 ;; Part 2
-(->> (-> "../input/day3.txt"
-       (str:from-file)
-       (str:lines)
-       (group-lists 3))
-  (mapcar (lambda (group)
-            (->
-              (to-list (first group))
-              (intersection (to-list (second group)))
-              (intersection (to-list (third group)))
-              (first)
-              (item-priority))))
-  (reduce #'+))
-
-;; Non-arrow solution.
-(reduce
- #'+ (mapcar
-      (lambda (group)
-        (item-priority
-         (first (intersection
-                 (intersection
-                  (to-list (first group))
-                  (to-list (second group)))
-                 (to-list (third group))))))
-      (group-lists (str:lines (str:from-file "../input/day3.txt")) 3)))
+(time (print (->> "../input/day3.txt"
+               (str:from-file)
+               (str:lines)
+               (group-lists 3)
+               (mapcar (lambda (group)
+                         (->
+                           (to-list (first group))
+                           (intersection (to-list (second group)))
+                           (intersection (to-list (third group)))
+                           (first)
+                           (item-priority))))
+               (reduce #'+))))
