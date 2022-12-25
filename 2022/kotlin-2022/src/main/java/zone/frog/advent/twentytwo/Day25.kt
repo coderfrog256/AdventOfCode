@@ -12,88 +12,17 @@ object Day25 {
         '-' to -1,
         '=' to -2
     )
-
-    private fun increment(builder: StringBuilder, location: Int) {
-        if (location == builder.length) {
-            builder.insert(0, '1')
-            return
-        }
-        val char = builder.length - 1 - location
-        when (builder[char]) {
-            '=' -> builder[char] = '-'
-            '-' -> builder[char] = '0'
-            '0' -> builder[char] = '1'
-            '1' -> builder[char] = '2'
-            '2' -> {
-                builder[char] = '='
-                increment(builder, location + 1)
-            }
-        }
-    }
-
-    private fun decrementChar(char: Char): Char {
-        return when (char) {
-            '2' -> '1'
-            '1' -> '0'
-            '0' -> '-'
-            '-' -> '='
-            else -> 'X'
-        }
-    }
-
-    private fun decrement(builder: StringBuilder, desiredValue: Long) {
-        // Special case. If the value is < 5, just start from the beginning and increment.
-        if(desiredValue < 5) {
-            builder.clear()
-            return
-        }
-
-        var index = 0
-        while (true) {
-            val decimal = snafuToDecimal(builder.toString())
-            if (decimal <= desiredValue || index >= builder.length) return
-
-            if (snafuToDecimal(builder.substring(1)) > desiredValue) {
-                // Fast decrease. If we can drop a whole order of magnitude, do so.
-                builder.deleteCharAt(0)
-            } else {
-                // Slow decrease. Decrement the characters until we hit the desired value, starting at the leftmost.
-                val char = builder[index]
-                val decremented = decrementChar(char)
-                if (index == 0 && decremented == '0') {
-                    // For the leftmost character, it can never go below 1.
-                    ++index
-                } else if (decremented == 'X') {
-                    // For the rest, if it is below -2 (=), move on/
-                    ++index
-                } else {
-                    // Try to swap out the character. If we go below the desired value, reset it and move to the next char.
-                    builder[index] = decremented
-                    if (snafuToDecimal(builder.toString()) < desiredValue) {
-                        builder[index] = char
-                        ++index
-                    }
-                }
-            }
-        }
-    }
+    private val reverseMap = digitMap.entries.associateBy({ it.value.toLong() }, { it.key })
 
     fun decimalToSnafu(number: Long): String {
-        // Start with a super high number, bigger than the desired number.
-        val remaining = StringBuilder("2")
-        while(snafuToDecimal(remaining.toString()) < number) {
-            remaining.append('2')
+        val digits = mutableListOf<Char>()
+        var remaining = number
+        while (remaining > 0) {
+            val adjusted = remaining + 2
+            digits += reverseMap[(adjusted % 5) - 2]!!
+            remaining = adjusted / 5
         }
-        // Shrink it down to at or below the desiredValue
-        decrement(remaining, number)
-
-        // In case we overshot the number, increment it back.
-        var toIncrement = number - snafuToDecimal(remaining.toString())
-        println("Remaining to increment: $toIncrement")
-        while (toIncrement-- > 0) {
-            increment(remaining, 0)
-        }
-        return remaining.toString()
+        return digits.reversed().joinToString("")
     }
 
     fun snafuToDecimal(snafu: String): Long {
