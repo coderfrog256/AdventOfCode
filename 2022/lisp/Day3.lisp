@@ -1,4 +1,8 @@
 (ql:quickload :str)
+(ql:quickload :binding-arrows)
+
+(defpackage :advent (:use :cl :binding-arrows))
+(in-package :advent)
 (defun to-list (s) (coerce s 'list))
 
 (defun item-priority (item)
@@ -17,7 +21,7 @@
       summing (bag-value line) into sum
       finally (return sum))
 
-(defun group-lists (n lists)
+(defun group-lists (lists n)
   (loop for list in lists
         with out = '()
         with pending = '()
@@ -28,6 +32,20 @@
         finally (return out)))
 
 ;; Part 2
+(->> (-> "../input/day3.txt"
+       (str:from-file)
+       (str:lines)
+       (group-lists 3))
+  (mapcar (lambda (group)
+            (->
+              (to-list (first group))
+              (intersection (to-list (second group)))
+              (intersection (to-list (third group)))
+              (first)
+              (item-priority))))
+  (reduce #'+))
+
+;; Non-arrow solution.
 (reduce
  #'+ (mapcar
       (lambda (group)
@@ -37,4 +55,4 @@
                   (to-list (first group))
                   (to-list (second group)))
                  (to-list (third group))))))
-      (group-lists 3 (str:lines (str:from-file "../input/day3.txt")))))
+      (group-lists (str:lines (str:from-file "../input/day3.txt")) 3)))
