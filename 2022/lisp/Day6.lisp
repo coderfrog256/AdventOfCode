@@ -8,6 +8,5 @@
         when (= window-size (length (remove-duplicates (coerce window 'list))))
           do (return (+ window-size i))))
 
-;; Part 1
 (time (print (-> "../input/day6.txt" (str:from-file) (find-first-unique 4))))
 (time (print (-> "../input/day6.txt" (str:from-file) (find-first-unique 14))))
