@@ -21,21 +21,11 @@
                    summing (bag-value line) into sum
                    finally (return sum))))
 
-(defun group-lists (n lists)
-  (loop for list in lists
-        with out = '()
-        with pending = '()
-        do (push list pending)
-           (when (= n (length pending))
-             (push pending out)
-             (setf pending '()))
-        finally (return out)))
-
 ;; Part 2
 (time (print (->> "../input/day3.txt"
                (str:from-file)
                (str:lines)
-               (group-lists 3)
+               (frog:chunk-items 3)
                (mapcar (lambda (group)
                          (->
                            (to-list (first group))
