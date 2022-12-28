@@ -1,0 +1,48 @@
+(ql:quickload '(:str :cl-ppcre :binding-arrows :snakes :alexandria))
+(defpackage :advent (:use :cl :cl-ppcre :binding-arrows))
+(in-package :advent)
+
+(snakes:defgenerator run-commands (file)
+  (let ((x 1))
+    (snakes:yield x)
+    (loop for command in (str:lines (str:from-file file))
+          for debug-tick from 1
+          do (when (equal "noop" command)
+               (snakes:yield x))
+             (register-groups-bind (value) ("addx (-?\\d+)" command)
+               (snakes:yield x)
+               (snakes:yield x)
+               (incf x (parse-integer value))))
+    (loop do (snakes:yield x))))
+
+(defun sum-checkins (file)
+  (let ((out 0)
+        (generator (snakes:enumerate (run-commands file))))
+    (incf out (print (* 20 (frog:generator-nth 20 generator))))
+    (incf out (print (* 60 (frog:generator-nth 60 generator))))
+    (incf out (print (* 100 (frog:generator-nth 100 generator))))
+    (incf out (print (* 140 (frog:generator-nth 140 generator))))
+    (incf out (print (* 180 (frog:generator-nth 180 generator))))
+    (incf out (print (* 220 (frog:generator-nth 220 generator))))
+    out))
+
+;; Part 1
+(sum-checkins "../input/day10.txt")
+
+(defun render-ascii-art (file)
+  (let ((registers (run-commands file)))
+    (funcall registers) ; Skip initial state
+    (loop with out = (make-array (* 40 6) :fill-pointer 0)
+          for i from 0 below (* 40 6)
+          for x = (funcall registers)
+          do (print x)
+          do (when (zerop (mod i 40)) (vector-push-extend #\newline out))
+             (let ((x-start (1- x))
+                   (x-end (1+ x))
+                   (i-in-row (mod i 40)))
+               (if (and (>= i-in-row x-start) (<= i-in-row x-end))
+                   (progn (vector-push-extend #\# out) (vector-push-extend #\# out))
+                   (progn (vector-push-extend #\  out) (vector-push-extend #\  out))))
+          finally (return (coerce out 'string)))))
+;; Part 2
+(time (print (render-ascii-art "../input/day10.txt")))
