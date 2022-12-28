@@ -12,6 +12,7 @@
           finally (return out))))
 
 (defmacro check-visible-line (var direction)
+  "Macro to scan a line, iterating VAR (x or y) in DIRECTION (from or downfrom). Updates OUT"
   (let* ((dimension (if (equal 'x var) 0 1))
          (start (if (equal 'from direction) 0 `(1- (array-dimension grid ,dimension))))
          (end (if (equal 'from direction) `(1- (array-dimension grid ,dimension)) 0)))
@@ -42,6 +43,8 @@
                (length))))
 
 (defmacro check-outward-range (x y direction start end)
+  "Iterates a variable named VAR in DIRECTION from START to END.
+Replace the X or Y that you want to iterate with VAR"
   `(loop for var ,direction ,start to ,end
          for var-height = (aref grid ,x ,y)
          for visible from 1
@@ -58,15 +61,13 @@
        )))
 
 (defun best-scenic-score (grid)
-  (let ((max-width (1- (array-dimension grid 0)))
-        (max-height (1- (array-dimension grid 1))))
   (loop with best = 0
-        for x from 1 to (1- max-width)
-        do (loop for y from 1 to (1- max-height)
+        for x from 1 to (- (array-dimension grid 0) 2)
+        do (loop for y from 1 to (- (array-dimension grid 1) 2)
                  for score = (scenic-score grid x y)
                  when (> score best)
                    do (setf best score))
-        finally (return best))))
+        finally (return best)))
 
 ;; Part 2
 (time (print (->> "../input/day8.txt"
