@@ -1,0 +1,72 @@
+(ql:quickload '(:str :cl-ppcre :binding-arrows :snakes :alexandria))
+(defpackage :advent (:use :cl :cl-ppcre :binding-arrows))
+(in-package :advent)
+
+(defclass monkey ()
+  ((id :initarg :id :accessor id)
+   (operation :initarg :operation :accessor operation)
+   (divisible :initarg :divisible :accessor divisible)
+   (true-monkey :initarg :true-monkey :accessor true-monkey)
+   (false-monkey :initarg :false-monkey :accessor false-monkey)
+   (items :initarg :items :accessor monkey-items)
+   (others :initarg :others :accessor others)
+   (num-inspected :initform 0 :accessor monkey-inspected)))
+
+(defmethod initialize-instance :after ((m monkey) &rest args)
+  (vector-push-extend m (others m)))
+
+(defmethod print-object ((m monkey) out)
+  (print-unreadable-object (m out :type t)
+    (format out "~A (~A) div=~A true=~A false=~A" (id m) (monkey-items m) (divisible m) (true-monkey m) (false-monkey m))))
+
+(defun run-monkey (monkey worry-divisor lcm)
+  (loop for item across(monkey-items monkey)
+        do (incf (monkey-inspected monkey))
+           (setf item (floor (mod (funcall (operation monkey) item) lcm) worry-divisor))
+           (vector-push-extend item (monkey-items (aref (others monkey)
+                                                        (if (zerop (mod item (divisible monkey)))
+                                                            (true-monkey monkey)
+                                                            (false-monkey monkey)))))
+           (setf (fill-pointer (monkey-items monkey)) 0)))
+
+(defun parse-monkey (description monkey-array)
+  (let (id items operation divisible true-monkey false-monkey)
+    (register-groups-bind (id-in) ("Monkey (\\d+):" (nth 0 description)) (setf id (parse-integer id-in)))
+    (register-groups-bind (items-in) ("  Starting items: (.*)" (nth 1 description))
+      (setf items (make-array 0 :fill-pointer 0))
+      (dolist (item (str:split ", " items-in))
+        (vector-push-extend (parse-integer item) items)))
+    ;; We have to support "+", "*" and square operations. Just run three regexes...
+    (register-groups-bind (amount-in) ("  Operation: new = old \\+ (\\d+)" (nth 2 description))
+      (let ((amount (parse-integer amount-in)))
+        (setf operation (lambda (old) (+ old amount)))))
+    (register-groups-bind (amount-in) ("  Operation: new = old \\* (\\d+)" (nth 2 description))
+      (let ((amount (parse-integer amount-in)))
+        (setf operation (lambda (old) (* old amount)))))
+    (register-groups-bind () ("  Operation: new = old \\* old" (nth 2 description))
+      (setf operation (lambda (old) (* old old))))
+    (register-groups-bind (divisible-in) ("  Test: divisible by (\\d+)" (nth 3 description)) (setf divisible (parse-integer divisible-in)))
+    (register-groups-bind (true-in)  ("    If true: throw to monkey (\\d+)"  (nth 4 description)) (setf true-monkey  (parse-integer true-in)))
+    (register-groups-bind (false-in) ("    If false: throw to monkey (\\d+)" (nth 5 description)) (setf false-monkey (parse-integer false-in)))
+    (if (null operation) (error (str:concat "Could not assign operation: " (nth 2 description))))
+    (make-instance 'monkey :id id :operation operation :divisible divisible
+                           :true-monkey true-monkey :false-monkey false-monkey
+                           :items items :others monkey-array)))
+
+(defun build-monkeys (lines)
+  (loop with monkey-arr = (make-array 0 :fill-pointer 0)
+        for description in (frog:chunk-items 7 lines)
+        do (parse-monkey description monkey-arr)
+        finally (return monkey-arr)))
+
+(defun play-monkey-ball (loops worry monkeys)
+  (let ((lcm 1))
+    (loop for m across monkeys
+          do (setf lcm (* lcm (divisible m))))
+    (dotimes (n loops)
+      (loop for m across monkeys
+            do (run-monkey m worry lcm))))
+  (reduce #'* (subseq (sort (mapcar (lambda (m) (monkey-inspected m)) (coerce monkeys 'list)) #'>) 0 2)))
+
+(time (print (->> "../input/day11.txt" (str:from-file) (str:lines) (build-monkeys) (play-monkey-ball 20 3))))
+(time (print (->> "../input/day11.txt" (str:from-file) (str:lines) (build-monkeys) (play-monkey-ball 10000 1))))
