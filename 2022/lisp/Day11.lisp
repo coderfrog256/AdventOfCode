@@ -15,12 +15,12 @@
 (defmethod initialize-instance :after ((m monkey) &rest args)
   (vector-push-extend m (others m)))
 
-(defmethod print-object ((m monkey) out)
+(defmethod print-object ((m monkey) out) ; Not relevant, but good for debugging. Keeping as a reference.
   (print-unreadable-object (m out :type t)
     (format out "~A (~A) div=~A true=~A false=~A" (id m) (monkey-items m) (divisible m) (true-monkey m) (false-monkey m))))
 
 (defun run-monkey (monkey worry-divisor lcm)
-  (loop for item across(monkey-items monkey)
+  (loop for item across (monkey-items monkey)
         do (incf (monkey-inspected monkey))
            (setf item (floor (mod (funcall (operation monkey) item) lcm) worry-divisor))
            (vector-push-extend item (monkey-items (aref (others monkey)
@@ -61,12 +61,14 @@
 
 (defun play-monkey-ball (loops worry monkeys)
   (let ((lcm 1))
-    (loop for m across monkeys
-          do (setf lcm (* lcm (divisible m))))
-    (dotimes (n loops)
-      (loop for m across monkeys
-            do (run-monkey m worry lcm))))
-  (reduce #'* (subseq (sort (mapcar (lambda (m) (monkey-inspected m)) (coerce monkeys 'list)) #'>) 0 2)))
+    (loop for m across monkeys do (setf lcm (* lcm (divisible m))))
+    (dotimes (n loops) (loop for m across monkeys do (run-monkey m worry lcm))))
+  (->>
+    (coerce monkeys 'list)
+    (mapcar (lambda (m) (monkey-inspected m)))
+    (frog:sort-r #'>)
+    (frog:subseq-r 0 2)
+    (reduce #'*)))
 
 (time (print (->> "../input/day11.txt" (str:from-file) (str:lines) (build-monkeys) (play-monkey-ball 20 3))))
 (time (print (->> "../input/day11.txt" (str:from-file) (str:lines) (build-monkeys) (play-monkey-ball 10000 1))))
