@@ -12,13 +12,6 @@
    (others :initarg :others :accessor others)
    (num-inspected :initform 0 :accessor monkey-inspected)))
 
-(defmethod initialize-instance :after ((m monkey) &rest args)
-  (vector-push-extend m (others m)))
-
-(defmethod print-object ((m monkey) out) ; Not relevant, but good for debugging. Keeping as a reference.
-  (print-unreadable-object (m out :type t)
-    (format out "~A (~A) div=~A true=~A false=~A" (id m) (monkey-items m) (divisible m) (true-monkey m) (false-monkey m))))
-
 (defun run-monkey (monkey worry-divisor lcm)
   (loop for item across (monkey-items monkey)
         do (incf (monkey-inspected monkey))
@@ -32,35 +25,29 @@
 (parseq:defrule monkey-rule ()
     (and
      (and "Monkey " (frog:integer-rule) ":" #\newline)
-     (and "  Starting items: " (frog:csv-rule (frog:integer-rule)) "" #\newline)
-     (and "  Operation: new = old " (or "* old" (and "+ " (frog:integer-rule)) (and "* " (frog:integer-rule))) "" #\newline)
-     (and "  Test: divisible by " (frog:integer-rule) "" #\newline)
-     (and "    If true: throw to monkey " (frog:integer-rule) "" #\newline)
+     (and "  Starting items: " (frog:csv-rule (frog:integer-rule)) #\newline)
+     (and "  Operation: new = old " (or "* old" (and "+ " (frog:integer-rule)) (and "* " (frog:integer-rule))) #\newline)
+     (and "  Test: divisible by " (frog:integer-rule) #\newline)
+     (and "    If true: throw to monkey " (frog:integer-rule) #\newline)
      (and "    If false: throw to monkey " (frog:integer-rule) (? #\newline)))
-  (:choose '(0 1) '(1 1) '(2 1) '(3 1) '(4 1) '(5 1)))
-
-(defun parse-monkey (description monkey-array)
-  (let (id items operation divisible true-monkey false-monkey
-           (parse-result (parseq:parseq 'monkey-rule description)))
-    (destructuring-bind (id-in items-in operation-in divisible-in true-in false-in) parse-result
-      (setf id id-in)
-      (setf items (make-array (length items-in) :fill-pointer (length items-in) :initial-contents items-in))
-      (setf divisible divisible-in)
-      (setf true-monkey true-in)
-      (setf false-monkey false-in)
-      (cond ((equal operation-in "* old") (setf operation (lambda (old) (* old old))))
-            ((equal "+ " (first operation-in)) (setf operation (lambda (old) (+ old (second operation-in)))))
-            ((equal "* " (first operation-in)) (setf operation (lambda (old) (* old (second operation-in)))))))
-    (if (null operation) (error (str:concat "Could not assign operation: " (nth 2 description))))
-    (make-instance 'monkey :id id :operation operation :divisible divisible
-                           :true-monkey true-monkey :false-monkey false-monkey
-                           :items items :others monkey-array)))
+  (:choose '(0 1) '(1 1) '(2 1) '(3 1) '(4 1) '(5 1)) ; Grab the second match within each line. This skips the constant prefixes.
+  (:function
+   (lambda (id items operation divisible true false)
+     (make-instance 'monkey
+                    :id id :divisible divisible :true-monkey true :false-monkey false
+                    :items (make-array (length items) :fill-pointer (length items) :initial-contents items)
+                    :operation (cond ((equal operation "* old") (lambda (old) (* old old)))
+                                     ((equal "+ " (first operation)) (lambda (old) (+ old (second operation))))
+                                     ((equal "* " (first operation)) (lambda (old) (* old (second operation))))
+                                     (t (error (str:concat "Could not assign operation: " operation))))))))
 
 (defun build-monkeys (lines)
   (loop with monkey-arr = (make-array 0 :fill-pointer 0)
         for description in (str:split (coerce (list #\newline #\newline) 'string) lines)
-        do (print description)
-        do (parse-monkey description monkey-arr)
+        for (monkey success) = (multiple-value-list (parseq:parseq 'monkey-rule description))
+        when (not success) do (error (str:concat "Error parsing monkey: " description))
+        do (vector-push-extend monkey monkey-arr)
+           (setf (others monkey) monkey-arr)
         finally (return monkey-arr)))
 
 (defun play-monkey-ball (loops worry monkeys)
