@@ -1,4 +1,4 @@
-(ql:quickload '(:str :cl-ppcre :binding-arrows :snakes :alexandria))
+(ql:quickload '(:str :cl-ppcre :binding-arrows :snakes :alexandria :parseq))
 (defpackage :advent (:use :cl :cl-ppcre :binding-arrows))
 (in-package :advent)
 
@@ -29,25 +29,28 @@
                                                             (false-monkey monkey)))))
            (setf (fill-pointer (monkey-items monkey)) 0)))
 
+(parseq:defrule monkey-rule ()
+    (and
+     (and "Monkey " (frog:integer-rule) ":" #\newline)
+     (and "  Starting items: " (frog:csv-rule (frog:integer-rule)) "" #\newline)
+     (and "  Operation: new = old " (or "* old" (and "+ " (frog:integer-rule)) (and "* " (frog:integer-rule))) "" #\newline)
+     (and "  Test: divisible by " (frog:integer-rule) "" #\newline)
+     (and "    If true: throw to monkey " (frog:integer-rule) "" #\newline)
+     (and "    If false: throw to monkey " (frog:integer-rule) (? #\newline)))
+  (:choose '(0 1) '(1 1) '(2 1) '(3 1) '(4 1) '(5 1)))
+
 (defun parse-monkey (description monkey-array)
-  (let (id items operation divisible true-monkey false-monkey)
-    (register-groups-bind (id-in) ("Monkey (\\d+):" (nth 0 description)) (setf id (parse-integer id-in)))
-    (register-groups-bind (items-in) ("  Starting items: (.*)" (nth 1 description))
-      (setf items (make-array 0 :fill-pointer 0))
-      (dolist (item (str:split ", " items-in))
-        (vector-push-extend (parse-integer item) items)))
-    ;; We have to support "+", "*" and square operations. Just run three regexes...
-    (register-groups-bind (amount-in) ("  Operation: new = old \\+ (\\d+)" (nth 2 description))
-      (let ((amount (parse-integer amount-in)))
-        (setf operation (lambda (old) (+ old amount)))))
-    (register-groups-bind (amount-in) ("  Operation: new = old \\* (\\d+)" (nth 2 description))
-      (let ((amount (parse-integer amount-in)))
-        (setf operation (lambda (old) (* old amount)))))
-    (register-groups-bind () ("  Operation: new = old \\* old" (nth 2 description))
-      (setf operation (lambda (old) (* old old))))
-    (register-groups-bind (divisible-in) ("  Test: divisible by (\\d+)" (nth 3 description)) (setf divisible (parse-integer divisible-in)))
-    (register-groups-bind (true-in)  ("    If true: throw to monkey (\\d+)"  (nth 4 description)) (setf true-monkey  (parse-integer true-in)))
-    (register-groups-bind (false-in) ("    If false: throw to monkey (\\d+)" (nth 5 description)) (setf false-monkey (parse-integer false-in)))
+  (let (id items operation divisible true-monkey false-monkey
+           (parse-result (parseq:parseq 'monkey-rule description)))
+    (destructuring-bind (id-in items-in operation-in divisible-in true-in false-in) parse-result
+      (setf id id-in)
+      (setf items (make-array (length items-in) :fill-pointer (length items-in) :initial-contents items-in))
+      (setf divisible divisible-in)
+      (setf true-monkey true-in)
+      (setf false-monkey false-in)
+      (cond ((equal operation-in "* old") (setf operation (lambda (old) (* old old))))
+            ((equal "+ " (first operation-in)) (setf operation (lambda (old) (+ old (second operation-in)))))
+            ((equal "* " (first operation-in)) (setf operation (lambda (old) (* old (second operation-in)))))))
     (if (null operation) (error (str:concat "Could not assign operation: " (nth 2 description))))
     (make-instance 'monkey :id id :operation operation :divisible divisible
                            :true-monkey true-monkey :false-monkey false-monkey
@@ -55,7 +58,8 @@
 
 (defun build-monkeys (lines)
   (loop with monkey-arr = (make-array 0 :fill-pointer 0)
-        for description in (frog:chunk-items 7 lines)
+        for description in (str:split (coerce (list #\newline #\newline) 'string) lines)
+        do (print description)
         do (parse-monkey description monkey-arr)
         finally (return monkey-arr)))
 
@@ -70,5 +74,5 @@
     (frog:subseq-r 0 2)
     (reduce #'*)))
 
-(time (print (->> "../input/day11.txt" (str:from-file) (str:lines) (build-monkeys) (play-monkey-ball 20 3))))
-(time (print (->> "../input/day11.txt" (str:from-file) (str:lines) (build-monkeys) (play-monkey-ball 10000 1))))
+(time (print (->> "../input/day11.txt" (str:from-file) (build-monkeys) (play-monkey-ball 20 3))))
+(time (print (->> "../input/day11.txt" (str:from-file) (build-monkeys) (play-monkey-ball 10000 1))))
