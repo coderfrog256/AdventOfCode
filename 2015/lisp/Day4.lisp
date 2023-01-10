@@ -1,21 +1,14 @@
-(subseq "000001dbbfa" 0 5)
+(ql:quickload '(:str :cl-ppcre :binding-arrows :snakes :alexandria :parseq))
+(defpackage :advent (:use :cl :cl-ppcre :binding-arrows))
+(in-package :advent)
 
 (declaim (inline is-valid))
 (defun is-valid (hash)
   (declare (type string hash))
   (equal (subseq hash 0 5) "00000"))
 
-(is-valid "000001dbbfa")
-(is-valid "001001dbbfa")
-
 (ql:quickload 'ironclad)
 (ql:quickload 'md5)
-
-(format t "~a~%" (ironclad:byte-array-to-hex-string (md5:md5sum-string "abcdef609043")))
-(is-valid (ironclad:byte-array-to-hex-string (md5:md5sum-string "abcdef609043")))
-
-(concatenate 'string "ab" "cd")
-(concatenate 'string "ab" (write-to-string 1))
 
 (defun is-valid-hash (prefix int)
   (declare (optimize (speed 3) (safety 0)))
@@ -27,10 +20,6 @@
      (concatenate 'string prefix
                   (write-to-string int))))))
 
-(is-valid-hash "abcdef" 609043)
-
-(disassemble 'is-valid-hash)
-
 (defun discover-hash (prefix)
   (loop for i from 1
         until (is-valid-hash prefix i)
@@ -38,7 +27,7 @@
 
 (discover-hash "abcdef")
 (discover-hash "pqrstuv")
-(print (discover-hash "yzbqklnj"))
+(print (discover-hash "iwrupvqb"))
 
 ;;; Part 2
 (declaim (inline is-valid-six))
@@ -61,4 +50,4 @@
         until (is-valid-hash-six prefix i)
         finally (return i)))
 
-(print (discover-hash-six "yzbqklnj"))
+(print (discover-hash-six "iwrupvqb"))

@@ -43,7 +43,7 @@
 
 (defun build-monkeys (lines)
   (loop with monkey-arr = (make-array 0 :fill-pointer 0)
-        for description in (str:split (coerce (list #\newline #\newline) 'string) lines)
+        for description in (str:split frog:+double-newline+ lines)
         for (monkey success) = (multiple-value-list (parseq:parseq 'monkey-rule description))
         when (not success) do (error (str:concat "Error parsing monkey: " description))
         do (vector-push-extend monkey monkey-arr)

@@ -1,23 +1,24 @@
+(ql:quickload '(:str :cl-ppcre :binding-arrows :snakes :alexandria :parseq))
+(defpackage :advent (:use :cl :cl-ppcre :binding-arrows))
+(in-package :advent)
+
 (defun get-square-feet (l w h)
-  (let ((lw (* 2 l w))
-        (wh (* 2 w h))
-        (lh (* 2 l h)))
-    (let ((min-side (min (* l w) (* w h) (* l h))))
-      (+ lw wh lh min-side))))
+  (let* ((lw (* 2 l w))
+         (wh (* 2 w h))
+         (lh (* 2 l h))
+         (min-side (min (* l w) (* w h) (* l h))))
+      (+ lw wh lh min-side)))
 
 (get-square-feet 2 3 4)
 (get-square-feet 1 1 10)
 
-(destructuring-bind (l w h) (uiop:split-string "1x2x3" :separator "x")
-  (format t "~A ~A ~A" l w h))
-
-(print (with-open-file (f "../input/day2.txt")
-         (loop for line = (read-line f nil)
-               while line
-               for (l w h) = (uiop:split-string line :separator "x")
-               sum (get-square-feet (parse-integer l)
-                                    (parse-integer w)
-                                    (parse-integer h)) into result
-               finally (return result))))
+(->> "../input/day2.txt"
+  (str:from-file)
+  (str:lines)
+  (mapcar (lambda (line) (str:split "x" line)))
+  (mapcar (lambda (parts) (get-square-feet (parse-integer (first parts))
+                                           (parse-integer (second parts))
+                                           (parse-integer (third parts)))))
+  (reduce #'+))
 
 ;; Just part 1.

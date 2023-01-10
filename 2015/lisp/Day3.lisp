@@ -1,15 +1,6 @@
-(defvar *houses* (make-hash-table :test #'equal))
-(setf *houses* (make-hash-table :test #'equal))
-
-(setf (gethash '(1 2) *houses*) 1)
-(gethash '(1 2) *houses*)
-(incf (gethash '(3 2) *houses* 0) 1)
-(gethash '(3 2) *houses*)
-(incf (gethash '(3 4) *houses* 0) 1)
-
-(loop for k being the hash-key of *houses* using (hash-value v)
-      counting t into len
-      finally (return len))
+(ql:quickload '(:str :cl-ppcre :binding-arrows :snakes :alexandria :parseq))
+(defpackage :advent (:use :cl :cl-ppcre :binding-arrows))
+(in-package :advent)
 
 ;;; Part 1
 (defun count-houses (input)
@@ -33,17 +24,9 @@
 (count-houses "^>v<")
 (count-houses "^v^v^v^v^v")
 
-(with-open-file (f "../input/day3.txt")
-  (let ((directions (read-line f)))
-    (print (count-houses directions))))
-
-(defvar *number-list* '(0 0))
-
-(incf (first *number-list*))
-(print *number-list*)
-(incf (second *number-list*))
-(incf (second *number-list*))
-(print *number-list*)
+(->> "../input/day3.txt"
+  (str:from-file)
+  (count-houses))
 
 ;;; Part 2
 (defun count-houses-robot (input)
@@ -52,7 +35,6 @@
         (robo (list 0 0)))
     (incf (gethash (list (first santa) (second santa)) houses 0) 1)
     (incf (gethash (list (first robo) (second robo)) houses 0) 1)
-    (format t "Initial State: santa=~A robo=~A~%" santa robo)
     (loop for direction across input
           for iter from 1
           for actor = (if (evenp iter) robo santa)
@@ -61,17 +43,15 @@
                ((equal #\< direction) (decf (first actor)))
                ((equal #\^ direction) (incf (second actor)))
                ((equal #\v direction) (decf (second actor))))
-          do (incf (gethash (list (first actor) (second actor)) houses 0) 1)
-          do (format t "Step ~A (~A): santa=~A robo=~A actor=~A~%" iter direction santa robo actor))
+          do (incf (gethash (list (first actor) (second actor)) houses 0) 1))
     (loop for k being the hash-key of houses
           counting t into len
           finally (return len))))
-
 
 (print (count-houses-robot "^v"))
 (print (count-houses-robot "^>v<"))
 (print (count-houses-robot "^v^v^v^v^v"))
 
-(with-open-file (f "../input/day3.txt")
-  (let ((directions (read-line f)))
-    (print (count-houses-robot directions))))
+(->> "../input/day3.txt"
+  (str:from-file)
+  (count-houses-robot))

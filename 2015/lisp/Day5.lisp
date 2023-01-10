@@ -1,12 +1,8 @@
+(ql:quickload '(:str :cl-ppcre :binding-arrows :snakes :alexandria :parseq))
+(defpackage :advent (:use :cl :cl-ppcre :binding-arrows))
+(in-package :advent)
+
 (defvar *vowels* (list #\a #\e #\i #\o #\u))
-(member #\e *vowels*)
-(member #\h *vowels*)
-(length (list 1 2 5))
-(defvar mylist nil)
-(setf mylist nil)
-(print mylist)
-(push 4 mylist)
-(member 4 mylist)
 
 (defun at-least-three-vowels (str)
   (let ((vowel-count 0))
@@ -34,9 +30,6 @@
 (dupe-character "aabc")
 (dupe-character "abcc")
 
-(search "we" "Ah well")
-(search "we" "Ah will")
-
 (defvar *bad-strings* (list "ab" "cd" "pq" "xy"))
 
 (defun no-bad-strings (input)
@@ -60,40 +53,36 @@
 (nice-string "haegwjzuvuyypxyu")
 (nice-string "dvszwmarrgswjxmb")
 
-(with-open-file (f "../input/day5.txt")
-  (loop for line = (read-line f nil)
-        while line
-        counting (nice-string line) into nice
-        finally (return nice)))
+(->> "../input/day5.txt"
+  (str:from-file)
+  (str:lines)
+  (remove-if-not #'nice-string)
+  (length))
 
 ;;; Part 2
 
-(defvar *temp-int* 2)
-(incf *temp-int*)
-(length "Hey")
-
 (defun two-pairs (input)
   (loop with seen = (make-hash-table :test #'equal)
-        for i from 1 upto (- (length input) 1)
+        for i from 1 below (length input)
         for j from 0
         for char-i = (char input i)
         for char-j = (char input j)
+
         do (if (> (incf (gethash (list char-j char-i) seen 0)) 1)
                (return-from two-pairs t))
-        do (when (equal char-i char-j)
+           ;; If starting a three-character sequence, advance by two characters instead of one.
+        do (when (and (< i (1- (length input))) (equal char-i char-j) (equal char-i (char input (1+ i))))
              (incf i)
              (incf j))
         finally (return nil)))
 
-(two-pairs "abc")
-(two-pairs "abac")
-(two-pairs "abcabc")
-(two-pairs "abab")
-(two-pairs "yyy")
-(two-pairs "yyyy")
+(two-pairs "xyxy")
+(two-pairs "aabcdefgaa")
+(two-pairs "aaa")
+(two-pairs "aaaa")
 
 (defun dupe-with-separator (input)
-  (loop for i from 2 upto (- (length input) 1)
+  (loop for i from 2 below (length input)
         for j from 0
         for char-i = (char input i)
         for char-j = (char input j)
@@ -111,9 +100,13 @@
    (two-pairs input)
    (dupe-with-separator input)))
 
-(is-nice-2 "qjhvhtzxzqqjkmpb")
-(dupe-with-separator "qjhvhtzxzqqjkmpb")
-
+(two-pairs "qjhvhtzxzqqjkmpb")
 (is-nice-2 "xxyxx")
 (is-nice-2 "uurcxstgmygtbstg")
 (is-nice-2 "ieodomkazucvgmuy")
+
+(->> "../input/day5.txt"
+  (str:from-file)
+  (str:lines)
+  (remove-if-not #'is-nice-2)
+  (length))
