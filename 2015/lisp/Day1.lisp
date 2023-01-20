@@ -19,6 +19,8 @@
 (print (day-1-part-1 "../input/day1.txt"))
 
 ;;; Part 2: At what point during iteration did the sum hit -1?
+;;; If you want to be cute you can look at the last element to get the sum,
+;;; which renders day-1-part-1 unneeded.
 (defun day-1-part-2 (file)
   (->> file
     (str:from-file)
