@@ -65,7 +65,7 @@
         do (destructuring-bind (command init-x init-y end-x end-y)
                (simple-scanf:scanf "%s %d,%d through %d,%d" (str:replace-all "turn " "" line))
              (update-grid command grid (list init-x init-y) (list end-x end-y)))
-        finally (return (count-lit grid))))
+        finally (return (print (count-lit grid)))))
 
 ;;; Part 2
 
@@ -114,6 +114,7 @@
    '(999 999))))
 
 ;;; Run it!
+;;; Not 13396307
 (print (with-open-file (f "../input/day6.txt")
          (loop with grid = (build-int-light-grid 1000 1000)
                for line = (read-line f nil)
