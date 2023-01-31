@@ -1,18 +1,13 @@
+(ql:quickload '(:str :cl-ppcre :binding-arrows :snakes :alexandria :parseq))
+(defpackage :advent (:use :cl :cl-ppcre :binding-arrows))
+(in-package :advent)
+
 (defun build-light-grid (x y)
   (make-array (list x y) :initial-element nil))
 
-(aref (build-light-grid 1000 1000) 999 999)
-
-(not nil)
-(not t)
-
 (defun update-grid (command grid init-position end-position)
-  (loop for x
-          from (first init-position)
-            to (first end-position)
-        do (loop for y
-                   from (second init-position)
-                     to (second end-position)
+  (loop for x from (first init-position) to (first end-position)
+        do (loop for y from (second init-position) to (second end-position)
                  do (cond
                       ((equal command "on")
                        (setf (aref grid x y) t))
@@ -24,8 +19,6 @@
                       (t (error (concatenate 'string "Unexpected input: " command)))))
         finally (return grid)))
 
-(print (update-grid "on" (build-light-grid 10 10) '(2 2) '(3 5)))
-
 (defun count-lit (grid)
   (loop for x from 0 to (1- (array-dimension grid 0))
         summing (loop for y from 0 to (1- (array-dimension grid 1))
@@ -34,56 +27,31 @@
           into outer-sum
         finally (return outer-sum)))
 
-
-(count-lit (build-light-grid 4 4))
-(count-lit (update-grid "on" (build-light-grid 10 10) '(2 2) '(3 5)))
-
-(print
- (count-lit
-  (update-grid "on"
-               (build-light-grid 1000 1000)
-               '(499 499)
-               '(500 500))))
-
-(defvar *text-input* "turn off 370,39 through 425,839")
-
-(ql:quickload :str)
-(ql:quickload :simple-scanf)
-
-(require :simple-scanf)
-(str:replace-all "turn" "" "return the slab")
-
-(destructuring-bind (command init-x init-y end-x end-y)
-    (simple-scanf:scanf "%s %d,%d through %d,%d" (str:replace-all "turn " "" *text-input*))
-  (format t "Running ~A from (~A,~A) to (~A,~A)" command init-x init-y end-x end-y))
-
-;;; Run it!
-(with-open-file (f "../input/day6.txt")
+(defun part-1 (input)
   (loop with grid = (build-light-grid 1000 1000)
-        for line = (read-line f nil)
-        while line
-        do (destructuring-bind (command init-x init-y end-x end-y)
-               (simple-scanf:scanf "%s %d,%d through %d,%d" (str:replace-all "turn " "" line))
-             (update-grid command grid (list init-x init-y) (list end-x end-y)))
-        finally (return (print (count-lit grid)))))
+        for line in (str:lines (str:from-file input))
+        do (register-groups-bind (command start-x start-y end-x end-y)
+               ("(?: turn )?(on|off|toggle) (\\d+),(\\d+) through (\\d+),(\\d+)" line)
+             (update-grid command grid
+                          (list (parse-integer start-x) (parse-integer start-y))
+                          (list (parse-integer end-x) (parse-integer end-y))))
+        finally (return (count-lit grid))))
+
+(time (print (part-1 "../input/day6.txt")))
 
 ;;; Part 2
 
-(defun build-int-light-grid (x y)
+(defun build-int-grid (x y)
   (make-array (list x y) :initial-element 0))
 
 (defun update-int-grid (command grid init-position end-position)
-  (loop for x
-          from (first init-position)
-            to (first end-position)
-        do (loop for y
-                   from (second init-position)
-                     to (second end-position)
+  (loop for x from (first init-position) to (first end-position)
+        do (loop for y from (second init-position) to (second end-position)
                  do (cond
                       ((equal command "on")
                        (incf (aref grid x y) 1))
                       ((equal command "off")
-                       (decf (aref grid x y) 1))
+                       (when (> 0 (decf (aref grid x y) 1)) (setf (aref grid x y) 0))) ; Never go negative
                       ((equal command "toggle")
                        (incf (aref grid x y) 2))
                       (t (error (concatenate 'string "Unexpected input: " command)))))
@@ -97,29 +65,14 @@
           into outer-sum
         finally (return outer-sum)))
 
-(print
- (count-brightness
-  (update-int-grid
-   "on"
-   (build-int-light-grid 1000 1000)
-   '(0 0)
-   '(0 0))))
+(defun part-2 (input)
+  (loop with grid = (build-int-grid 1000 1000)
+        for line in (str:lines (str:from-file input))
+        do (register-groups-bind (command start-x start-y end-x end-y)
+               ("(?: turn )?(on|off|toggle) (\\d+),(\\d+) through (\\d+),(\\d+)" line)
+             (update-int-grid command grid
+                              (list (parse-integer start-x) (parse-integer start-y))
+                              (list (parse-integer end-x) (parse-integer end-y))))
+        finally (return (count-brightness grid))))
 
-(print
- (count-brightness
-  (update-int-grid
-   "toggle"
-   (build-int-light-grid 1000 1000)
-   '(0 0)
-   '(999 999))))
-
-;;; Run it!
-;;; Not 13396307
-(print (with-open-file (f "../input/day6.txt")
-         (loop with grid = (build-int-light-grid 1000 1000)
-               for line = (read-line f nil)
-               while line
-               do (destructuring-bind (command init-x init-y end-x end-y)
-                      (simple-scanf:scanf "%s %d,%d through %d,%d" (str:replace-all "turn " "" line))
-                    (update-int-grid command grid (list init-x init-y) (list end-x end-y)))
-               finally (return (count-brightness grid)))))
+(time (print (part-2 "../input/day6.txt")))
