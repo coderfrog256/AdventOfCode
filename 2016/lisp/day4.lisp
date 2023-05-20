@@ -1,50 +1,24 @@
 (ql:quickload '(:str :cl-ppcre :binding-arrows :snakes :alexandria :parseq))
 (defpackage :advent (:use :cl :cl-ppcre :binding-arrows))
 (in-package :advent)
+(defconstant +ord+ (char-code #\a))
+(defun runner (part post-process)
+  (print (time (->> "../input/day4.txt" (str:from-file) (str:lines) (mapcar part) (funcall post-process)))))
 
-(defun hash-name (s)
-  (let ((counts (make-hash-table :test #'equal)))
-    (loop for c across s do (if (alpha-char-p c) (incf (gethash c counts 0))))
-    (coerce (mapcar #'car
-                    (subseq (sort (alexandria:hash-table-alist counts)
-                                  (lambda (a b)
-                                    (or (> (cdr a) (cdr b))
-                                        (and (= (cdr a) (cdr b))
-                                             (char< (car a) (car b))))))
-                            0 5)) 'string)))
+(defun part-one (line)
+  (labels ((hash-name (s)
+             (let ((counts (make-hash-table :test #'equal)))
+               (loop for c across s do (if (alpha-char-p c) (incf (gethash c counts 0))))
+               (coerce (mapcar #'car (subseq (stable-sort (alexandria:hash-table-alist counts)
+                                                          (lambda (a b) (> (cdr a) (cdr b)))) 0 5)) 'string)))))
+  (ppcre:register-groups-bind (name sector checksum) ("(.*)-(\\d+)\\[(.*)\\]" line)
+    (if (equal checksum (hash-name name)) (parse-integer sector) 0)))
+(runner #'part-one (lambda (x) (reduce #'+ x)))
 
-(defun real-room-value (name)
-  (if (->> name
-        (str:substring 0 (position #\- name :from-end t))
-        (hash-name)
-        (equal (str:substring (1+ (position #\[ name)) -1 name)))
-      (parse-integer (str:substring (1+ (position #\- name :from-end t)) (position #\[ name :from-end t) name))
-      0))
-
-(print (time
-        (->> "../input/day4.txt"
-          (str:from-file)
-          (str:lines)
-          (mapcar #'real-room-value)
-          (reduce #'+))))
-
-;; Part 2
-(defun decrypt-name (name amount)
-  (coerce
-   (loop for char across name
-         collect (if (char= char #\-) #\Space
-                     (code-char (+ (char-code #\a)
-                                   (mod (+ amount (- (char-code char) (char-code #\a))) 26)))))
-   'string))
-
-(print (time (->> "../input/day4.txt"
-               (str:from-file)
-               (str:lines)
-               (mapcar (lambda (line)
-                         (let* ((parts (str:split #\- line))
-                                (name (str:join "-" (butlast parts)))
-                                (amount (parse-integer (str:substring 0 (position #\[ (first (last parts))) (first (last parts)) ))))
-                           (list (decrypt-name name amount) amount))))
-               (remove-if-not (lambda (x) (search "north" (first x))))
-               (first)
-               (second))))
+(defun part-two (line)
+  (labels ((decrypt-name (name amount)
+             (coerce (loop for c across name
+                           collect (-> c (char-code) (- +ord+) (+ amount) (mod 26) (+ +ord+) code-char)) 'string)))
+    (ppcre:register-groups-bind (name sector) ("(.*)-(\\d+)\\[.*\\]" line)
+      (list (decrypt-name name (parse-integer sector)) sector))))
+(runner #'part-two (lambda (x) (->> x (remove-if-not (lambda (x) (search "north" (first x)))) (first) (second))))
