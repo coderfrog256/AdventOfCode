@@ -1,5 +1,5 @@
-(ql:quickload '(:str :binding-arrows :hu.dwim.defclass-star :alexandria :parseq))
-(defpackage :advent (:use :cl :binding-arrows :hu.dwim.defclass-star))
+(ql:quickload '(:str :hu.dwim.defclass-star :alexandria :parseq))
+(defpackage :advent (:use :cl :hu.dwim.defclass-star))
 (in-package :advent)
 ;; The input is parsed using parseq, a parser combinator library.
 ;; One new helper is used here, frog:integer-rule parses an integer.
@@ -25,10 +25,7 @@
         for i from 0
         for line in (str:lines (frog:get-advent-of-code-input 2023 2 :input-suffix suffix))
         for game = (parseq:parseq 'game-rule line)
-        if (->> game
-             (mapcar #'session-valid)
-             (every #'identity))
-          do (push (1+ i) valid)
+        if (every #'session-valid game) do (push (1+ i) valid)
         finally (return (reduce #'+ valid))))
 (print (time (part-1)))
 
