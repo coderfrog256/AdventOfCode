@@ -11,14 +11,14 @@
 
 (defun run-solution (file)
   (let ((input (coerce (str:lines file) 'vector))
-        (claimed (make-hash-table :test #'equal))
+        (near-gear (make-hash-table :test #'equal))
         (gear-sources (make-hash-table :test #'equal))
-        (valid (list)))
-    (labels ((handle-number-end (x y word-start working-number num-valid)
-               (when (and num-valid working-number)
+        (part-numbers (list)))
+    (labels ((handle-number-end (x y word-start working-number num-adjacent)
+               (when (and num-adjacent working-number)
                  (let ((num (parse-integer (coerce (nreverse working-number) 'string)))
                        (marked (make-hash-table :test #'equal)))
-                   (push num valid)
+                   (push num part-numbers)
                    (loop for index-x from word-start to x
                          do (for-each-neighbor (index-x y) (nx ny)
                               (let ((old (gethash (list nx ny) gear-sources nil)))
@@ -30,18 +30,18 @@
             do (loop for char across line and x from 0
                      when (and (not (equal char #\.)) (not (digit-char-p char)))
                        do (for-each-neighbor (x y) (nx ny)
-                            (setf (gethash (list nx ny) claimed) t))))
+                            (setf (gethash (list nx ny) near-gear) t))))
 
       (loop for line across input and y from 0
-            do (loop with working-number = (list) and num-valid = nil and word-start = nil
+            do (loop with working-number = (list) and num-adjacent = nil and word-start = nil
                      for char across line and x from 0
                      if (digit-char-p char) do (if (not word-start) (setf word-start x))
                                                (push char working-number)
-                                               (setf num-valid (or num-valid (gethash (list x y) claimed nil)))
-                     else do (handle-number-end (1- x) y word-start working-number num-valid)
-                             (setf num-valid nil working-number nil word-start nil)
-                     finally (handle-number-end x y word-start working-number num-valid))
-            finally (format t "Solution 1: ~a~%" (reduce #'+ valid)))
+                                               (setf num-adjacent (or num-adjacent (gethash (list x y) near-gear nil)))
+                     else do (handle-number-end (1- x) y word-start working-number num-adjacent)
+                             (setf num-adjacent nil working-number nil word-start nil)
+                     finally (handle-number-end x y word-start working-number num-adjacent))
+            finally (format t "Solution 1: ~a~%" (reduce #'+ part-numbers)))
       (->> (alexandria:hash-table-values gear-sources)
         (remove-if-not (lambda (x) (= 2 (length x))))
         (mapcar (lambda (x) (apply #'* x)))
