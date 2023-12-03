@@ -1,4 +1,4 @@
-(ql:quickload '(:str :access :alexandria :binding-arrows))
+(ql:quickload '(:str :access :binding-arrows))
 (defpackage :advent (:use :cl :binding-arrows))
 (in-package :advent)
 
@@ -11,7 +11,7 @@
 
 (defun run-solution (file)
   (let ((input (coerce (str:lines file) 'vector))
-        (near-gear (make-hash-table :test #'equal))
+        (near-sym (make-hash-table :test #'equal))
         (gear-sources (make-hash-table :test #'equal))
         (part-numbers (list)))
     (labels ((handle-number-end (x y word-start working-number num-adjacent)
@@ -30,21 +30,18 @@
             do (loop for char across line and x from 0
                      when (and (not (equal char #\.)) (not (digit-char-p char)))
                        do (for-each-neighbor (x y) (nx ny)
-                            (setf (gethash (list nx ny) near-gear) t))))
+                            (setf (gethash (list nx ny) near-sym) t))))
 
       (loop for line across input and y from 0
             do (loop with working-number = (list) and num-adjacent = nil and word-start = nil
                      for char across line and x from 0
                      if (digit-char-p char) do (if (not word-start) (setf word-start x))
                                                (push char working-number)
-                                               (setf num-adjacent (or num-adjacent (gethash (list x y) near-gear nil)))
+                                               (setf num-adjacent (or num-adjacent (gethash (list x y) near-sym nil)))
                      else do (handle-number-end (1- x) y word-start working-number num-adjacent)
                              (setf num-adjacent nil working-number nil word-start nil)
                      finally (handle-number-end x y word-start working-number num-adjacent))
             finally (format t "Solution 1: ~a~%" (reduce #'+ part-numbers)))
-      (->> (alexandria:hash-table-values gear-sources)
-        (remove-if-not (lambda (x) (= 2 (length x))))
-        (mapcar (lambda (x) (apply #'* x)))
-        (reduce #'+)))))
+      (loop for sources being the hash-values of gear-sources when (= 2 (length sources)) sum (reduce #'* sources)))))
 
 (print (time (run-solution (frog:get-advent-of-code-input 2023 3))))
