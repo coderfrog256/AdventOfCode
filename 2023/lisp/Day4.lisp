@@ -6,10 +6,7 @@
   (loop with sides = (str:split "|" (second (str:split ": " line)))
         with winning = (read-from-string (str:concat "(" (first sides) ")"))
         with hand =  (read-from-string (str:concat "(" (second sides) ")"))
-        with win-count = 0 and out = 0
-        for num in hand
-        when (member num winning) do (incf win-count)
-          finally (return win-count)))
+        for num in hand counting (member num winning)))
 
 (defun part-1 (file)
   (loop for line in (str:lines file)
