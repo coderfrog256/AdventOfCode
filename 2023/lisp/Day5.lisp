@@ -3,28 +3,26 @@
 (in-package :advent)
 (declaim (optimize (speed 3) (safety 0) (debug 0) (compilation-speed 0) (space 0)))
 (defun parse-map (map)
-  (let* ((lines (cdr (str:lines map))))
-    (loop for line in lines
-          for parsed = (read-from-string (str:concat "(" line ")"))
-          for expanded = (list (first parsed) (second parsed) (third parsed))
-          collect expanded)))
+  (loop for line in (rest (str:lines map))
+        for parsed = (frog:extract-numbers line)
+        for expanded = (list (first parsed) (second parsed) (third parsed))
+        collect expanded))
 
 (declaim (ftype (function (integer list) integer) lookup-in-map))
 (defun lookup-in-map (key map)
   (loop for replacement in map
         for (dest source length) = replacement
         for diff = (- key source)
-        if (and (>= diff 0) (<= diff length))
-          do (return (+ dest diff))
+        if (and (>= diff 0) (<= diff length)) do (return (+ dest diff))
         finally (return key)))
 
-(defun traverse-maps (file)
-  (let* ((parts (str:split frog:+double-newline+ file))
-         (seeds (read-from-string (str:concat "(" (str:substring 7 nil (first parts)) ")")))
-         (maps (mapcar #'parse-map (rest parts))))
-    (loop for seed in seeds
-          minimize (reduce (lambda (value map) (lookup-in-map value map)) maps :initial-value seed))))
-(print (time (traverse-maps (frog:get-advent-of-code-input 2023 5))))
+(defun part-1 (file)
+  (loop with parts = (str:split frog:+double-newline+ file)
+        with seeds = (frog:extract-numbers (first parts))
+        with maps = (mapcar #'parse-map (rest parts))
+        for seed in seeds
+        minimize (reduce (lambda (value map) (lookup-in-map value map)) maps :initial-value seed)))
+(print (time (part-1 (frog:get-advent-of-code-input 2023 5))))
 
 (declaim (ftype (function (integer list) integer) lookup-in-map-reverse))
 (defun lookup-in-map-reverse (key map)
@@ -42,11 +40,11 @@
         finally (return nil)))
 
 (defun part-2 (file)
-  (let* ((parts (str:split frog:+double-newline+ file))
-         (seeds (read-from-string (str:concat "(" (str:substring 7 nil (first parts)) ")")))
-         (chunks (frog:chunk-items 2 seeds))
-         (maps (reverse (mapcar #'parse-map (rest parts)))))
-    (loop for location from 0
-          for seed = (reduce (lambda (value map) (lookup-in-map-reverse value map)) maps :initial-value location)
-          if (seed-in-chunk seed chunks) do (return location))))
+  (loop with parts = (str:split frog:+double-newline+ file)
+        with seeds = (frog:extract-numbers (first parts))
+        with chunks = (frog:chunk-items 2 seeds)
+        with maps = (reverse (mapcar #'parse-map (rest parts)))
+        for location from 0
+        for seed = (reduce (lambda (value map) (lookup-in-map-reverse value map)) maps :initial-value location)
+        if (seed-in-chunk seed chunks) do (return location)))
 (print (time (part-2 (frog:get-advent-of-code-input 2023 5))))
