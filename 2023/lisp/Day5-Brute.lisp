@@ -1,5 +1,5 @@
-(ql:quickload '(:str :cl-ppcre :binding-arrows :hu.dwim.defclass-star :alexandria :parseq :metabang-bind :fset :priority-queue))
-(defpackage :advent (:use :cl :cl-ppcre :binding-arrows :parseq :metabang-bind :hu.dwim.defclass-star))
+(ql:quickload '(:str))
+(defpackage :advent (:use :cl))
 (in-package :advent)
 (declaim (optimize (speed 3) (safety 0) (debug 0) (compilation-speed 0) (space 0)))
 (defun parse-map (map)
