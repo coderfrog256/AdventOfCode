@@ -7,8 +7,7 @@
   (loop with out = (make-instance 'range-map)
         for line in (rest (str:lines map))
         for parsed = (frog:extract-numbers line)
-        for expanded = (list (first parsed) (second parsed) (third parsed))
-        do (push expanded (ranges-of out))
+        do (push parsed (ranges-of out))
         finally (setf (points-of-interest-of out) (mapcar #'second (ranges-of out)))
         finally (return out)))
 
