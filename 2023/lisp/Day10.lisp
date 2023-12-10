@@ -19,7 +19,7 @@
             ((and (< x d-x) (= y d-y)) :left)
             ((and (> x d-x) (= y d-y)) :right)))))
 
-;; Macro, add a potential neighbor to a node if it accepts the given character
+;; Add a potential neighbor to a node if it accepts the given character
 (defmacro add-potental-neighbor (y x accept-fn)
   `(if (,accept-fn (char-at ,y ,x)) (push (list ,y ,x) (slot-value node 'potential-neighbors))))
 
@@ -104,6 +104,10 @@
       (invalidate-node (gethash (list (1- y) x) network) network visited)
       (invalidate-node (gethash (list (1+ y) x) network) network visited))))
 
+;; Add a linking pipe between two nodes. Expansions are invalid as they are not the original network.
+(defmacro expand-direction (y x)
+  `(setf (gethash (list ,y ,x) new-network) (make-instance 'node :y ,y :x ,x :valid nil :in-loop (in-loop-of node))))
+
 ;; Macro to cut down on repetition. Iterates in a direction until it hits a wall, invalidating nodes along the way.
 (defmacro flood-direction ((outer end-outer) (inner start-inner dir-inner end-inner))
   `(loop for ,outer from 0 upto ,end-outer
@@ -123,11 +127,11 @@
             do (setf (gethash (list (* 2 y) (* 2 x)) new-network) (frog:copy-instance node :y (* 2 y) :x (* 2 x)))
                (loop for (neighbor direction) in (neighbors-of node)
                      for neighbor-x = (x-of neighbor) and neighbor-y = (y-of neighbor)
-                     do (case direction ;; Expanded placeholder nodes are not valid, as we don't want to consider them for the final count.
-                          (:left (setf (gethash (list (* 2 y) (1- (* 2 x))) new-network) (make-instance 'node :y (* 2 y) :x (1- (* 2 x)) :valid nil :in-loop (in-loop-of node))))
-                          (:right (setf (gethash (list (* 2 y) (1+ (* 2 x))) new-network) (make-instance 'node :y (* 2 y) :x (1+ (* 2 x)) :valid nil :in-loop (in-loop-of node))))
-                          (:up (setf (gethash (list (1- (* 2 y)) (* 2 x)) new-network) (make-instance 'node :y (1- (* 2 y)) :x (* 2 x) :valid nil :in-loop (in-loop-of node))))
-                          (:down (setf (gethash (list (1+ (* 2 y)) (* 2 x)) new-network) (make-instance 'node :y (1+ (* 2 y)) :x (* 2 x) :valid nil :in-loop (in-loop-of node)))))))
+                     do (case direction
+                          (:left  (expand-direction (* 2 y) (1- (* 2 x))))
+                          (:right (expand-direction (* 2 y) (1+ (* 2 x))))
+                          (:up    (expand-direction (1- (* 2 y)) (* 2 x)))
+                          (:down  (expand-direction (1+ (* 2 y)) (* 2 x))))))
       (setf max-x (reduce #'max (mapcar #'second (alexandria:hash-table-keys new-network)))
             max-y (reduce #'max (mapcar #'first (alexandria:hash-table-keys new-network))))
       ;; Fill in any gaps in the network with empty nodes.
