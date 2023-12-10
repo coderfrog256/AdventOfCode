@@ -123,10 +123,10 @@
                (loop for (neighbor direction) in (neighbors-of node)
                      for neighbor-x = (x-of neighbor) and neighbor-y = (y-of neighbor)
                      do (case direction ;; Expanded placeholder nodes are not valid, as we don't want to consider them for the final count.
-                          (:left (setf (gethash (list (* 2 y) (- (* 2 x) 1)) new-network) (make-instance 'node :y (* 2 y) :x (- (* 2 x) 1) :valid nil :in-loop (in-loop-of node))))
-                          (:right (setf (gethash (list (* 2 y) (+ (* 2 x) 1)) new-network) (make-instance 'node :y (* 2 y) :x (+ (* 2 x) 1) :valid nil :in-loop (in-loop-of node))))
-                          (:up (setf (gethash (list (- (* 2 y) 1) (* 2 x)) new-network) (make-instance 'node :y (- (* 2 y) 1) :x (* 2 x) :valid nil :in-loop (in-loop-of node))))
-                          (:down (setf (gethash (list (+ (* 2 y) 1) (* 2 x)) new-network) (make-instance 'node :y (+ (* 2 y) 1) :x (* 2 x) :valid nil :in-loop (in-loop-of node)))))))
+                          (:left (setf (gethash (list (* 2 y) (1- (* 2 x))) new-network) (make-instance 'node :y (* 2 y) :x (1- (* 2 x)) :valid nil :in-loop (in-loop-of node))))
+                          (:right (setf (gethash (list (* 2 y) (1+ (* 2 x))) new-network) (make-instance 'node :y (* 2 y) :x (1+ (* 2 x)) :valid nil :in-loop (in-loop-of node))))
+                          (:up (setf (gethash (list (1- (* 2 y)) (* 2 x)) new-network) (make-instance 'node :y (1- (* 2 y)) :x (* 2 x) :valid nil :in-loop (in-loop-of node))))
+                          (:down (setf (gethash (list (1+ (* 2 y)) (* 2 x)) new-network) (make-instance 'node :y (1+ (* 2 y)) :x (* 2 x) :valid nil :in-loop (in-loop-of node)))))))
       (setf max-x (reduce #'max (mapcar #'second (alexandria:hash-table-keys new-network)))
             max-y (reduce #'max (mapcar #'first (alexandria:hash-table-keys new-network))))
       ;; Fill in any gaps in the network with empty nodes.
