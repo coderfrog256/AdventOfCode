@@ -8,6 +8,7 @@
 (defun accepts-right (char) (member char '(#\- #\F #\L #\S)))
 (defun accepts-up (char) (member char '(#\| #\J #\L #\S)))
 (defun accepts-down (char) (member char '(#\| #\F #\7 #\S)))
+
 ;; Given two nodes, what direction is the first from the second?
 (defun determine-direction (src dest)
   (with-slots (x y) dest
@@ -17,6 +18,11 @@
             ((and (= x d-x) (> y d-y)) :down)
             ((and (< x d-x) (= y d-y)) :left)
             ((and (> x d-x) (= y d-y)) :right)))))
+
+;; Macro, add a potential neighbor to a node if it accepts the given character
+(defmacro add-potental-neighbor (y x accept-fn)
+  `(if (,accept-fn (char-at ,y ,x)) (push (list ,y ,x) (slot-value node 'potential-neighbors))))
+
 ;; Create a network from a file. Returns two values, the start node and the full network
 (defun make-network (file)
   (let ((network (serapeum:dict))
@@ -29,43 +35,27 @@
       (loop for y from 0 below (length lines)
             for line = (nth y lines)
             do (loop for x from 0 below (length line)
-                     for node = (make-instance 'node :x x :y y)
-                     for char = (char line x)
-                     do (case char
-                          ((#\|) (setf (gethash (list y x) network) node)
-                           (if (accepts-down (char-at (1- y) x))
-                               (push (list (1- y) x) (slot-value node 'potential-neighbors)))
-                           (if (accepts-up (char-at (1+ y) x))
-                               (push (list (1+ y) x) (slot-value node 'potential-neighbors))))
-                          (push (list (1+ y) x) (slot-value node 'potential-neighbors))
-                          ((#\-) (setf (gethash (list y x) network) node)
-                           (if (accepts-right (char-at y (1- x)))
-                               (push (list y (1- x)) (slot-value node 'potential-neighbors)))
-                           (if (accepts-left (char-at y (1+ x)))
-                               (push (list y (1+ x)) (slot-value node 'potential-neighbors))))
-                          ((#\L) (setf (gethash (list y x) network) node)
-                           (if (accepts-down (char-at (1- y) x))
-                               (push (list (1- y) x) (slot-value node 'potential-neighbors)))
-                           (if (accepts-left (char-at y (1+ x)))
-                               (push (list y (1+ x)) (slot-value node 'potential-neighbors))))
-                          ((#\J) (setf (gethash (list y x) network) node)
-                           (if (accepts-down (char-at (1- y) x))
-                               (push (list (1- y) x) (slot-value node 'potential-neighbors)))
-                           (if (accepts-right (char-at y (1- x)))
-                               (push (list y (1- x)) (slot-value node 'potential-neighbors))))
-                          ((#\7) (setf (gethash (list y x) network) node)
-                           (if (accepts-up (char-at (1+ y) x))
-                               (push (list (1+ y) x) (slot-value node 'potential-neighbors)))
-                           (if (accepts-right (char-at y (1- x)))
-                               (push (list y (1- x)) (slot-value node 'potential-neighbors))))
-                          ((#\F) (setf (gethash (list y x) network) node)
-                           (if (accepts-up (char-at (1+ y) x))
-                               (push (list (1+ y) x) (slot-value node 'potential-neighbors)))
-                           (if (accepts-left (char-at y (1+ x)))
-                               (push (list y (1+ x)) (slot-value node 'potential-neighbors))))
-                          ((#\.) (setf (gethash (list y x) network) node))
-                          ((#\S) (setf (gethash (list y x) network) node)
-                           (setf start node)))))
+                     for node = (setf (gethash (list y x) network) (make-instance 'node :x x :y y))
+                     do (case (char line x)
+                          (#\|
+                           (add-potental-neighbor (1- y) x accepts-down)
+                           (add-potental-neighbor (1+ y) x accepts-up))
+                          (#\-
+                            (add-potental-neighbor y (1- x) accepts-right)
+                            (add-potental-neighbor y (1+ x) accepts-left))
+                          (#\L
+                           (add-potental-neighbor (1- y) x accepts-down)
+                           (add-potental-neighbor y (1+ x) accepts-left))
+                          (#\J
+                            (add-potental-neighbor (1- y) x accepts-down)
+                            (add-potental-neighbor y (1- x) accepts-right))
+                          (#\7
+                            (add-potental-neighbor (1+ y) x accepts-up)
+                            (add-potental-neighbor y (1- x) accepts-right))
+                          (#\F
+                           (add-potental-neighbor (1+ y) x accepts-up)
+                           (add-potental-neighbor y (1+ x) accepts-left))
+                          (#\S (setf start node)))))
       ;; Second pass, determine actual neighbors based on bi-directional connections
       (loop for node being the hash-values of network
             do (loop for neighbor-coords in (slot-value node 'potential-neighbors)
@@ -75,6 +65,7 @@
             finally (loop for node being the hash-values of network
                           do (setf (slot-value node 'neighbors) (remove-duplicates (slot-value node 'neighbors) :test #'equal))))
       (values start network))))
+
 ;; Use Dijkstra's algorithm to find the shortest path from start to every other node.
 (defun get-loop (start)
   (let* ((min-distance (serapeum:dict))
@@ -94,12 +85,14 @@
                      do (setf (gethash neighbor min-distance) new-distance)
                         (priority-queue:pqueue-push (list new-distance neighbor) new-distance queue))
           finally (return min-distance))))
+
 ;; Part 1, find the longest path from all the shortest paths.
 (defun part-1 (file)
   (let* ((start (make-network file))
          (pipe-loop (get-loop start)))
     (reduce #'max (alexandria:hash-table-values pipe-loop))))
 (print (time (part-1 (frog:get-advent-of-code-input 2023 10))))
+
 ;; Invalidate a node and all its neighbors that aren't part of the loop.
 (defun invalidate-node (node network visited)
   (when (and node (not (in-loop-of node)) (not (gethash node visited)))
@@ -110,6 +103,14 @@
       (invalidate-node (gethash (list y (1+ x)) network) network visited)
       (invalidate-node (gethash (list (1- y) x) network) network visited)
       (invalidate-node (gethash (list (1+ y) x) network) network visited))))
+
+;; Macro to cut down on repetition. Iterates in a direction until it hits a wall, invalidating nodes along the way.
+(defmacro flood-direction ((outer end-outer) (inner start-inner dir-inner end-inner))
+  `(loop for ,outer from 0 upto ,end-outer
+         do (loop for ,inner from ,start-inner ,dir-inner ,end-inner
+                  for node = (gethash (list ,inner ,outer) new-network)
+                  if (and node (in-loop-of node)) do (return)
+                  else do (invalidate-node node new-network visited))))
 
 (defun part-2 (file)
   (multiple-value-bind (start old-network) (make-network file)
@@ -135,21 +136,9 @@
                                                do (setf (gethash (list y x) new-network) (make-instance 'node :y y :x x :valid nil :in-loop nil))))
       ;; Flood fill!
       ;; Run from each edge, invalidate nodes that aren't shielded by the loop.
-      (loop for x from 0 upto max-x do (loop for y from 0 upto max-y
-                                             for node = (gethash (list y x) new-network)
-                                             if (and node (in-loop-of node)) do (return)
-                                             else do (invalidate-node node new-network visited)))
-      (loop for x from 0 upto max-x do (loop for y from max-y downto 0
-                                             for node = (gethash (list y x) new-network)
-                                             if (and node (in-loop-of node)) do (return)
-                                             else do (invalidate-node node new-network visited)))
-      (loop for y from 0 upto max-y do (loop for x from 0 upto max-x
-                                             for node = (gethash (list y x) new-network)
-                                             if (and node (in-loop-of node)) do (return)
-                                             else do (invalidate-node node new-network visited)))
-      (loop for y from 0 upto max-y do (loop for x from max-x downto 0
-                                             for node = (gethash (list y x) new-network)
-                                             if (and node (in-loop-of node)) do (return)
-                                             else do (invalidate-node node new-network visited)))
+      (flood-direction (x max-x) (y 0 upto max-y))
+      (flood-direction (x max-x) (y max-y downto 0))
+      (flood-direction (y max-y) (x 0 upto max-x))
+      (flood-direction (y max-y) (x max-x downto 0))
       (count-if #'valid-of (alexandria:hash-table-values new-network)))))
 (print (time (part-2 (frog:get-advent-of-code-input 2023 10))))
