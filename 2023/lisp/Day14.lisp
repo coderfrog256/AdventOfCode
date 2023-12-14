@@ -62,17 +62,6 @@
                        finally (return x)) into max-x
         finally (return (list out max-x y))))
 
-(defun parse-cave (file)
-  (loop with lines = (str:lines file)
-        with out = (serapeum:dict)
-        for line in lines and y from 0
-        maximize (loop for x from 0 below (length line)
-                       for c = (char line x)
-                       if (char= c #\O) do (setf (gethash (list y x) out) (make-instance 'rock :x x :y y))
-                       else if (char= c #\#) do (setf (gethash (list y x) out) (make-instance 'cube :x x :y y))
-                       finally (return x)) into max-x
-        finally (return (list out max-x y))))
-
 (defun cave-string (cave max-x max-y)
   (intern (with-output-to-string (sb)
     (loop for y from 0 below max-y
