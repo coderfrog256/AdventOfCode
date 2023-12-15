@@ -1,7 +1,7 @@
-(ql:quickload '(:str :cl-ppcre :binding-arrows :hu.dwim.defclass-star :alexandria :parseq :metabang-bind :fset :priority-queue :function-cache))
+(ql:quickload '(:str :cl-ppcre :binding-arrows :hu.dwim.defclass-star :alexandria :parseq :metabang-bind :fset :priority-queue :function-cache :cl-tqdm))
 (defpackage :advent (:use :cl :cl-ppcre :binding-arrows :parseq :metabang-bind :hu.dwim.defclass-star))
 (in-package :advent)
-(declaim (optimize (speed 3) (safety 0) (debug 0) (compilation-speed 0)))
+;;(declaim (optimize (speed 3) (safety 0) (debug 0) (compilation-speed 0)))
 (defparameter *cave-cache* (make-instance 'function-cache:lru-cache :capacity 1000000))
 (defclass* cube () (x y))
 (defclass* rock () (x y))
@@ -95,10 +95,12 @@
          (cave (first parsed))
          (max-x (second parsed)) (max-y (third parsed))
          (key (cave-string cave max-x max-y)))
-    (dotimes (i 1000000000)
-      (when (zerop (mod i 100000)) (format t "~a~%" i)) ; Heartbeat
-      (let ((cycled (cycle cave key max-x max-y)))
-        (setf cave (first cycled) key (second cycled))))
+    (cl-tqdm:with-tqdm progress 1000000000 ""
+        (dotimes (i 1000000000)
+          (when (zerop (mod i 100000))
+            (cl-tqdm:update progress :incf 100000)) ; Bump the progress bar
+          (let ((cycled (cycle cave key max-x max-y)))
+            (setf cave (first cycled) key (second cycled)))))
     (reduce #'+ (remove-if-not #'rockp (alexandria:hash-table-values cave))
             :key (lambda (r) (1+ (- max-y (y-of r) 1 ))))))
 (print (time (part-2 (frog:get-advent-of-code-input 2023 14))))
