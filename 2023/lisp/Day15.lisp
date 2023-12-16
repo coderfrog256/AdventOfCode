@@ -32,7 +32,7 @@
                       summing (* (1+ i) (1+ j) (num-of lense)))))
 
 (defun part-2 (line)
-  (loop with boxes = (mapcar (lambda (_) (make-instance 'box)) (make-list 256))
+  (loop with boxes = (loop for i from 0 below 256 collect (make-instance 'box))
         with parts = (str:split "," line)
         for part in parts
         for part-split = (cl-ppcre:split "[-=]" part)
