@@ -3,8 +3,9 @@
 (in-package :advent)
 (setf lparallel:*kernel* (lparallel:make-kernel 16))
 (declaim (optimize (speed 3) (safety 0) (debug 0) (compilation-speed 0) (space 0)))
-(defclass* beam () (y x delta-y delta-x))
 
+(defclass* beam () (y x delta-y delta-x))
+(defun set-delta (beam new-dx new-dy) (with-slots (delta-x delta-y) beam (setf delta-x new-dx delta-y new-dy) beam))
 (defmethod print-object ((beam beam) stream)
   (with-slots (delta-x delta-y x y) beam
     (format stream "~a ~a ~a ~a" delta-y delta-x y x)))
@@ -13,15 +14,15 @@
   (with-slots (delta-x delta-y x y) beam
     (if (char= mirror #\/)
         (cond
-          ((> delta-x 0) (list (frog:copy-instance beam :delta-x 0 :delta-y -1)))
-          ((< delta-x 0) (list (frog:copy-instance beam :delta-x 0 :delta-y 1)))
-          ((> delta-y 0) (list (frog:copy-instance beam :delta-x -1 :delta-y 0)))
-          ((< delta-y 0) (list (frog:copy-instance beam :delta-x 1 :delta-y 0))))
+          ((> delta-x 0) (list (set-delta beam  0 -1)))
+          ((< delta-x 0) (list (set-delta beam  0 1)))
+          ((> delta-y 0) (list (set-delta beam -1 0)))
+          ((< delta-y 0) (list (set-delta beam  1 0))))
         (cond ; char is #\\
-          ((> delta-x 0) (list (frog:copy-instance beam :delta-x 0 :delta-y 1)))
-          ((< delta-x 0) (list (frog:copy-instance beam :delta-x 0 :delta-y -1)))
-          ((> delta-y 0) (list (frog:copy-instance beam :delta-x 1 :delta-y 0)))
-          ((< delta-y 0) (list (frog:copy-instance beam :delta-x -1 :delta-y 0)))))))
+          ((> delta-x 0) (list (set-delta beam  0  1)))
+          ((< delta-x 0) (list (set-delta beam  0 -1)))
+          ((> delta-y 0) (list (set-delta beam  1  0)))
+          ((< delta-y 0) (list (set-delta beam -1  0)))))))
 
 (defun handle-mirror (mirror beam)
   (with-slots (delta-x delta-y x y) beam
@@ -39,8 +40,7 @@
     (if (or (>= x max-x) (>= y max-y) (< x 0) (< y 0)) nil
         (let* ((new-x (+ x delta-x)) (new-y (+ y delta-y))
                (mirror (gethash (list new-y new-x) grid)))
-          (setf x new-x)
-          (setf y new-y)
+          (setf x new-x y new-y)
           (handle-mirror mirror beam)))))
 
 (defun parse-maze (file)
