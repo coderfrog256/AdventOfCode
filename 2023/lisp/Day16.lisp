@@ -9,7 +9,7 @@
 (defmethod print-object ((beam beam) stream)
   (with-slots (delta-x delta-y x y) beam
     (format stream "~a ~a ~a ~a" delta-y delta-x y x)))
-;; NOTE: Uses the frog:copy-instance helper. This copies an instance, but allows you to override some slots.
+
 (defun handle-tilted-mirror (mirror beam)
   (with-slots (delta-x delta-y x y) beam
     (if (char= mirror #\/)
@@ -23,7 +23,7 @@
           ((< delta-x 0) (list (set-delta beam  0 -1)))
           ((> delta-y 0) (list (set-delta beam  1  0)))
           ((< delta-y 0) (list (set-delta beam -1  0)))))))
-
+;; NOTE: Uses the frog:copy-instance helper. This copies an instance, but allows you to override some slots.
 (defun handle-mirror (mirror beam)
   (with-slots (delta-x delta-y x y) beam
     (cond
