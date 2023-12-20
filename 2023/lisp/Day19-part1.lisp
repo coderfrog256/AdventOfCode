@@ -12,8 +12,7 @@
         if (funcall predicate part)
           do (cond ((string= destination "R") (return nil))
                    ((string= destination "A") (return t))
-                   (t (return (run-workflow (gethash destination rules-by-name) part rules-by-name))))
-        finally (return nil)))
+                   (t (return (run-workflow (gethash destination rules-by-name) part rules-by-name))))))
 
 (defun parse-rule (line)
   (let* ((parts (str:split "{" (str:substring 0 -1 line)))
@@ -21,9 +20,7 @@
          (rules (mapcar (lambda (r) (str:split ":" r)) (str:split "," (second parts)))))
     (loop with parsed-rules = (list)
           for rule in rules
-          if (= 1 (length rule)) do (if (not (string= "R" (first rule)))
-                                        (push (list (lambda (x)
-                                                      (format t "Always true~%") t) (first rule)) parsed-rules))
+          if (= 1 (length rule)) do (push (list (lambda (x) t) (first rule)) parsed-rules)
           else do (register-groups-bind (slot comparison value) ("(\\w+)([=<>])(\\w+)" (first rule))
                     (push (list (lambda (x) (funcall (get-comparison (char comparison 0))
                                                      (slot-value x (get-slot-by-name (char slot 0)))

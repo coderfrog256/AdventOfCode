@@ -11,7 +11,7 @@
     (loop with parsed-rules = (list)
           for rule in rules
           if (= 1 (length rule)) do (push (list nil nil nil (first rule)) parsed-rules)
-          else do (register-groups-bind (slot comparison value) ("(\\w+)([=<>])(\\w+)" (first rule))
+          else do (register-groups-bind (slot comparison value) ("(\\w+)([<>])(\\w+)" (first rule))
                     (push (list (char slot 0) (char comparison 0) (parse-integer value) (second rule)) parsed-rules))
           finally (return (make-instance 'rule :name name :rules (nreverse parsed-rules))))))
 
@@ -26,7 +26,7 @@
         for range-index = (position slot '(#\x #\m #\a #\s NIL))
         for (min . max) = (nth range-index ranges)
         if (not slot) do (return (+ out (traverse-rule rules destination ranges)))
-          if (char= comparison #\<)
+        if (char= comparison #\<)
             do (when (< value max) (let ((sub-ranges (copy-list ranges)))
                                      (setf (nth range-index sub-ranges) (cons min (1- value)))
                                      (incf out (traverse-rule rules destination sub-ranges))
