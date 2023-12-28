@@ -1,6 +1,7 @@
 (ql:quickload '(:str :alexandria :function-cache))
 (defpackage :advent (:use :cl))
 (in-package :advent)
+(declaim (optimize (speed 3) (safety 0) (debug 0)))
 
 (defun parse-map (input)
   (loop with out = (serapeum:dict)
@@ -54,32 +55,31 @@
 ;; Therefore we only need some subset of the infinite map mapped into distances.
 ;; We can then repeat the distance of the first/last row/column infinitely, as those tiles must be using the blank rows/columns.
 ;; When calculating points we can leap over tiles and do some bounds checking to tell if it's incldued.
-(defparameter *tile-lookaround* 4) ; How many copies of the map should we look around?
+(defparameter *tile-lookaround* 3) ; How many copies of the map should we look around?
 
 (defun distance-map (file)
-  (let ((queue (list)))
-    (loop with counter = 0
-          with (start map) = (parse-map file)
-          with max-y = (1+ (apply #'max (loop for key being the hash-keys of map collect (first key))))
-          with max-x = (1+ (apply #'max (loop for key being the hash-keys of map collect (second key))))
-          with min-distances = (serapeum:dict)
-          initially (push (list (list 0 0) start 0) queue) ;; Tile-Position, Position, distance
-          while queue
-          for (tile pos dist) = (pop queue)
-          for key = (list tile pos)
-          for char = (gethash pos map)
-          if (zerop (mod (incf counter) 100000))
-            do (format t "~a: ~a ~a~%" counter dist (length queue))
-          if (and (char= #\. char) (not (gethash key min-distances))
-                  (<= (abs (first tile)) *tile-lookaround*) (<= (abs (second tile)) *tile-lookaround*))
-            do (setf (gethash key min-distances) dist)
-               (loop for (dy dx) in '((0 1) (0 -1) (1 0) (-1 0))
-                     for new-y = (+ (first pos) dy) and new-x = (+ (second pos) dx)
-                     for new-tile = (list (if (< new-y 0) (1- (first tile)) (if (>= new-y max-y) (1+ (first tile)) (first tile)))
-                                          (if (< new-x 0) (1- (second tile)) (if (>= new-x max-x) (1+ (second tile)) (second tile))))
-                     for new-pos = (list (mod new-y max-y) (mod new-x max-x))
-                     do (setf queue (nconc queue (list (list new-tile new-pos (1+ dist))))))
-          finally (return (list min-distances max-y max-x)))))
+  (loop with queue = (list) and counter = 0
+        with (start map) = (parse-map file)
+        with max-y = (1+ (apply #'max (loop for key being the hash-keys of map collect (first key))))
+        with max-x = (1+ (apply #'max (loop for key being the hash-keys of map collect (second key))))
+        with min-distances = (serapeum:dict)
+        initially (push (list (list 0 0) start 0) queue) ;; Tile-Position, Position, distance
+        while queue
+        for (tile pos dist) = (pop queue)
+        for key = (list tile pos)
+        for char = (gethash pos map)
+        if (zerop (mod (incf counter) 100000))
+          do (format t "~a: ~a ~a~%" counter dist (length queue))
+        if (and (char= #\. char) (not (gethash key min-distances))
+                (<= (abs (first tile)) *tile-lookaround*) (<= (abs (second tile)) *tile-lookaround*))
+          do (setf (gethash key min-distances) dist)
+             (loop for (dy dx) in '((0 1) (0 -1) (1 0) (-1 0))
+                   for new-y = (+ (first pos) dy) and new-x = (+ (second pos) dx)
+                   for new-tile = (list (if (< new-y 0) (1- (first tile)) (if (>= new-y max-y) (1+ (first tile)) (first tile)))
+                                        (if (< new-x 0) (1- (second tile)) (if (>= new-x max-x) (1+ (second tile)) (second tile))))
+                   for new-pos = (list (mod new-y max-y) (mod new-x max-x))
+                   do (setf queue (nconc queue (list (list new-tile new-pos (1+ dist))))))
+        finally (return (list min-distances max-y max-x))))
 
 (defparameter *cache* nil) ; Dynamic-scoped cache for handle-tiles. Is set in part-2
 (defun handle-tiles (distance corner max-steps max-x) ; We use max-x which works for both directions as tiles are squares.
@@ -97,7 +97,7 @@
   (loop with *cache* = (make-instance 'function-cache:lru-cache :capacity 1000000)
         with (min-distances max-y max-x) = (distance-map file)
         with count = 0
-        with lookaround-range = (alexandria:iota (1- (* 2 *tile-lookaround*)) :start (- (1- *tile-lookaround*)))
+        with lookaround-range = (alexandria:iota (1+ (* 2 *tile-lookaround*)) :start (- *tile-lookaround*))
         for y from 0 below max-y
         do (loop for x from 0 below max-x
                  ;; Don't bother checking the infinite map if it's not even reachable in the relative one.
