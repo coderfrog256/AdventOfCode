@@ -7,8 +7,8 @@
         with right = nil
         for pair in (->> input
                       (str:lines)
-                      (mapcar (lambda (s) (ppcre:split "\\s+" s)))
-                      (mapcar (lambda (l) (mapcar #'parse-integer l))))
+                      (mapcar (lambda (s) (ppcre:register-groups-bind (left right) ("(\\d+)\\s+(\\d+)" s)
+                                            (list (parse-integer left) (parse-integer right))))))
         do (push (first pair) left)
            (push (second pair) right)
         finally (return (reduce #'+
@@ -22,8 +22,8 @@
 (defun part-2 (input)
   (let* ((parsed (->> input
                    (str:lines)
-                   (mapcar (lambda (s) (ppcre:split "\\s+" s)))
-                   (mapcar (lambda (l) (mapcar #'parse-integer l)))))
+                   (mapcar (lambda (s) (ppcre:register-groups-bind (left right) ("(\\d+)\\s+(\\d+)" s)
+                                         (list (parse-integer left) (parse-integer right)))))))
          (second (mapcar #'alexandria:lastcar parsed)))
     (loop for pair in parsed
           for id = (first pair)
