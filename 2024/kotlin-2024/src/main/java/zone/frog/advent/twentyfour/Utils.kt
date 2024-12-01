@@ -1,5 +1,7 @@
 package zone.frog.advent.twentyfour
 
+import javax.swing.JOptionPane
+
 typealias IntPair = Pair<Int, Int>
 typealias LongPair = Pair<Long, Long>
 typealias MutableGrid<T> = MutableList<MutableList<T>>
@@ -24,4 +26,9 @@ operator fun <T> MutableGrid<T>.set(position: IntPair, value: T) {
 
 operator fun IntPair.plus(rhs: IntPair) = this.first+rhs.first to this.second+rhs.second
 
-
+fun Any.toClipboard() {
+    val process = ProcessBuilder("xclip", "-selection", "clipboard").start()
+    process.outputStream.bufferedWriter().use { it.write(toString()) }
+    JOptionPane.showMessageDialog(null, toString());
+    process.waitFor()
+}
