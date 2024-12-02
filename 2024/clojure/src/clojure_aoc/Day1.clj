@@ -1,5 +1,4 @@
-(ns frog.zone)
-(require '[clojure.string :as str])
+(ns zone.frog (:require [clojure.string :as str]))
 (defn zip-lists [lists] (apply map vector lists))
 
 (defn part-one [file]
