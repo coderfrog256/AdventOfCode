@@ -1,11 +1,10 @@
 (ns frog.zone)
-
+(require '[clojure.string :as str])
 (defn zip-lists [lists] (apply map vector lists))
 
 (defn part-one [file]
-  (->> (slurp file)
-       (clojure.string/split-lines)
-       (map #(->> (clojure.string/split % #"\s+")
+  (->> (str/split-lines (slurp file))
+       (map #(->> (str/split % #"\s+")
                   (map read-string)
                   (vec)))
        (zip-lists)
@@ -17,9 +16,8 @@
 (part-one "../input/day1.txt")
 
 (defn part-two [file]
-  (let [[left right] (->> (slurp file)
-                          (clojure.string/split-lines)
-                          (map #(->> (clojure.string/split % #"\s+")
+  (let [[left right] (->> (str/split-lines (slurp file))
+                          (map #(->> (str/split % #"\s+")
                                      (map read-string)
                                      (vec)))
                           (zip-lists))
