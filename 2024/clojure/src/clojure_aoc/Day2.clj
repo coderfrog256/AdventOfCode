@@ -1,5 +1,5 @@
-(ns zone.frog (:require [clojure.string :as str]
-                        [clojure.math :as math]))
+(ns zone.frog (:require [clojure.string :as str] [clojure.math :as math]))
+
 (defn is-safe [nums]
   (some? (reduce (fn [direction [left right]]
                    (let [diff (- left right)
