@@ -4,16 +4,17 @@
 
 (defun part-1 (line)
   (let ((nums (frog:extract-numbers line)))
-    (loop with increasing = t
-          with decreasing = t
+    (loop with sign = nil
           with in-range = t
           for i from 0 below (1- (length nums))
           for current = (nth i nums)
           for next = (nth (1+ i) nums)
-          do (setf increasing (and increasing (< current next)))
-             (setf decreasing (and decreasing (> current next)))
-             (setf in-range (and in-range (<= (abs (- current next)) 3)))
-          finally (return (and in-range (or increasing decreasing))))))
+          for diff = (- next current)
+          for current-sign = (signum diff)
+          if (and sign (not (= sign current-sign))) do (return nil)
+            do (setf sign current-sign)
+               (setf in-range (and in-range (<= (abs diff) 3)))
+          finally (return in-range))))
 
 (frog:report (length (remove-if-not #'part-1 (str:lines
                                               (frog:get-advent-of-code-input 2024 2 :input-suffix "test")))))
