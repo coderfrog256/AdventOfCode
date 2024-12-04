@@ -1,7 +1,7 @@
 (ns zone.frog (:require [clojure.string :as str] [clojure.math :as math]))
 
 (defn read-input [filename]
-  (let [input (str/split-lines (slurp filename))]
+  (let [input (str/split-lines (get-advent-of-code-input filename))]
     (into {} (for [row (range (count input))
                    [col char] (map-indexed vector (str/split (nth input row) #""))]
                [[row col] char]))))
