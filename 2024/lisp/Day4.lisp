@@ -11,20 +11,20 @@
                  do (setf (aref arr y x) (nth x line)))
         finally (return arr)))
 
-(defmacro iter (y-end (x-start x-dir x-end) char-lookup)
-  `(loop for y from 0 below ,y-end
-         do (loop for x from ,x-start ,x-dir ,x-end
-                  do (let ((word (map 'string #'(lambda (i) (,@char-lookup)) (list 0 1 2 3))))
-                       (when (or (string= word "XMAS") (string= word "SAMX"))
-                         (incf count 1))))
+(defmacro count-xmas ((y-start y-end) (x-start x-end) (y x))
+  `(loop for y from ,y-start below (- (array-dimension arr 0) ,y-end)
+         do (loop for x from ,x-start below (- (array-dimension arr 1) ,x-end)
+                  do (let ((word (map 'string (lambda (i) (aref arr ,y ,x))
+                                      (list 0 1 2 3))))
+                       (if (or (string= word "XMAS") (string= word "SAMX")) (incf count 1))))
          finally (return count)))
 
 (defun part-1 (input)
   (let ((count 0) (arr (build-grid input)))
-    (iter (array-dimension arr 0) (0 below (- (array-dimension arr 1) 3)) (aref arr y (+ x i)))
-    (iter (- (array-dimension arr 0) 3) (0 below (array-dimension arr 1)) (aref arr (+ i y) x))
-    (iter (- (array-dimension arr 0) 3) (0 below (- (array-dimension arr 1) 3)) (aref arr (+ y i) (+ x i)))
-    (iter (- (array-dimension arr 0) 3) ((1- (array-dimension arr 1)) downto 3) (aref arr (+ y i) (- x i)))))
+    (count-xmas (0 0) (0 3) (y (+ x i)))
+    (count-xmas (0 3) (0 0) ((+ i y) x))
+    (count-xmas (0 3) (0 3) ((+ y i) (+ x i)))
+    (count-xmas (0 3) (3 0) ((+ y i) (- x i)))))
 (frog:report (part-1 (frog:get-advent-of-code-input 2024 4 :input-suffix "test")))
 (frog:report (part-1 (frog:get-advent-of-code-input 2024 4)))
 
