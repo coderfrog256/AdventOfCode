@@ -1,0 +1,28 @@
+(ql:quickload '(:str :binding-arrows :hu.dwim.defclass-star :parseq))
+(defpackage :advent (:use :cl :binding-arrows :hu.dwim.defclass-star))
+(in-package :advent)
+
+(defun mid (list) (nth (floor (length list) 2) list))
+(defclass* page () (id (dependencies nil)))
+(defun sort-page (l r) (member (id-of r) (dependencies-of l) :test #'equal))
+
+(defun run (input part-1)
+  (let* ((parts (str:split frog:+double-newline+ input))
+         (pages (make-hash-table :test #'equal)))
+    (loop for order in (str:lines (first parts))
+          for (id dependency) = (str:split "|" order)
+          for page = (gethash id pages (make-instance 'page :id id))
+          do (push dependency (dependencies-of page))
+             (setf (gethash id pages) page))
+    (loop for line in (str:lines (car (last parts)))
+          for line-pages = (mapcar (lambda (r) (gethash r pages (make-instance 'page :id r))) (str:split "," line))
+          for sorted = (mapcar #'id-of (sort line-pages #'sort-page))
+          for sorted-str = (str:join "," sorted)
+          if (funcall (if part-1 #'identity #'not) (string= sorted-str line))
+            collect (mapcar #'parse-integer sorted) into result
+          finally (return (reduce #'+ (mapcar #'mid result))))))
+
+(frog:report (run (frog:get-advent-of-code-input 2024 5 :input-suffix "test") t))
+(frog:report (run (frog:get-advent-of-code-input 2024 5) t))
+(frog:report (run (frog:get-advent-of-code-input 2024 5 :input-suffix "test") nil))
+(frog:report (run (frog:get-advent-of-code-input 2024 5) nil))

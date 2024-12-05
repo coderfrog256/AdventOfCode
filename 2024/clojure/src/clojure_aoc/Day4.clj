@@ -42,5 +42,5 @@
                                           1 0))))
                                  0 (range (inc length)))))
             0 (range (inc length)))))
-(print (time (part-2 "../input/day4-test.txt")))
-(print (time (part-2 "../input/day4.txt")))
+(println (time (part-2 "../input/day4-test.txt")))
+(println (time (part-2 "../input/day4.txt")))
