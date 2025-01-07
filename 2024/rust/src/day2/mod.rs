@@ -1,31 +1,87 @@
-// Yeah no. Fuck this language. Who the hell would choose this willingly?
-use std::fs::File;
-use std::collections::HashMap;
-use std::io::{BufRead, BufReader};
+use anyhow::{Result, Context};
 
 fn is_safe(numbers: &Vec<i64>) -> bool {
+    let mut signum: Option<i64> = None;
+    for window in numbers.windows(2) {
+        let diff = window[1] - window[0];
+        if diff.abs() > 3 {
+            return false;
+        }
+        let current_signum = diff.signum();
+        if signum.is_some() && current_signum != signum.unwrap() {
+            return false;
+        }
+        signum = Some(current_signum);
+    }
     true
 }
 
-fn part_one(input: &String) -> Result<(), crate::common::Error> {
-    let valid = BufReader::new(File::open(input)?).lines()
-        .map(|line| line?.parse::<i64>()?) // Fuck this, the end of my rope is literally here.
-        .filter(|n| is_safe(&vec![*n]))
+fn part_one(contents: String) -> Result<()> {
+    let numbers: Vec<Result<Vec<i64>>> = contents
+        .lines()
+        .map(|line| {
+            line.split_whitespace()
+                .map(|num| num.parse::<i64>().context("Error parsing int"))
+                .collect::<Result<Vec<i64>>>()
+        })
+        .collect();
+
+    if let Some(err) = numbers.iter().find_map(|res| res.as_ref().err()) {
+        return Err(anyhow::Error::msg(err.to_string()));
+    }
+
+    let valid = numbers
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|line| is_safe(line))
         .count();
+
     println!("Valid: {}", valid);
     Ok(())
 }
 
-fn part_two(input: &String) -> Result<(), crate::common::Error> {
+fn part_two(contents: String) -> Result<()> {
+    let numbers: Vec<Result<Vec<i64>>> = contents
+        .lines()
+        .map(|line| {
+            line.split_whitespace()
+                .map(|num| num.parse::<i64>().context("Error parsing int"))
+                .collect::<Result<Vec<i64>>>()
+        })
+        .collect();
+
+    if let Some(err) = numbers.iter().find_map(|res| res.as_ref().err()) {
+        return Err(anyhow::Error::msg(err.to_string()));
+    }
+
+    let valid = numbers
+        .into_iter()
+        .filter_map(Result::ok)
+        .filter(|line| {
+            if is_safe(line) {
+                return true;
+            }
+            for i in 0..line.len() {
+                let mut copy = line.clone();
+                copy.remove(i);
+                if is_safe(&copy) {
+                    return true;
+                }
+            }
+            false
+        })
+        .count();
+
+    println!("Valid: {}", valid);
     Ok(())
 }
 
-pub fn run(input: &String) -> Result<(), crate::common::Error> {
+pub fn run(input: &String) -> Result<()> {
     let start = std::time::Instant::now();
-    part_one(input)?;
+    part_one(std::fs::read_to_string(input).context("Failed to read input")?)?;
     println!("Part 1 Time: {}µs", start.elapsed().as_micros());
     let start2 = std::time::Instant::now();
-    part_two(input)?;
+    part_two(std::fs::read_to_string(input).context("Failed to read input")?)?;
     println!("Part 2 Time: {}µs", start2.elapsed().as_micros());
     Ok(())
 }
