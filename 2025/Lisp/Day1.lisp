@@ -27,7 +27,7 @@
                           (mod (+ current n) 100)))
          (first (if left?
                     (if (zerop current) 100 current)
-                    (let ((steps-to-zero (mod (- 100 current) 100)))
+                    (let ((steps-to-zero (- 100 current)))
                       (if (zerop steps-to-zero) 100 steps-to-zero))))
          (count 0))
     (when (>= n first)
