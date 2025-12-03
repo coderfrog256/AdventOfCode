@@ -2,6 +2,7 @@
 (defpackage :advent (:use :cl :binding-arrows :hu.dwim.defclass-star))
 (in-package :advent)
 (declaim (optimize (speed 3) (safety 0) (debug 0) (compilation-speed 0)))
+(setf lparallel:*kernel* (lparallel:make-kernel 15))
 
 (defun is-dupe (str)
   (if (zerop (mod (length str) 2))
@@ -40,9 +41,13 @@
           finally (return nil)))
 
 (defun part-2 (input)
-  (loop for part in (str:split "," input)
-        for (start end) = (str:split "-" part)
-        sum (loop for i from (parse-integer start) to (parse-integer end)
-                  when (is-dupe-2 (write-to-string i)) sum i)))
+  (->> input
+    (str:split ",")
+    (lparallel:pmap 'list
+                    (lambda (line)
+                      (loop with parts = (str:split "-" line)
+                            for i from (parse-integer (first parts)) to (parse-integer (second parts))
+                            when (is-dupe-2 (write-to-string i)) sum i)))
+    (reduce #'+)))
 
 (frog:report (part-2 (str:join "" (str:lines (frog:get-advent-of-code-input 2025 2)))))
